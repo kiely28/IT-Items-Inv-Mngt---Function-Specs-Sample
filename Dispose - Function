@@ -1,0 +1,185 @@
+Excellent 👏 — this Dispose/Replacement (Dispose) module completes the transaction cycle of your IT Items Inventory Management System.
+This module is designed to record and manage the disposal or replacement of IT assets when they are no longer usable, out of warranty, or replaced with new ones.
+
+Below is the Function Specification in the same professional format as your previous modules.
+
+
+---
+
+🧩 FUNCTION SPECIFICATION
+
+Module: Dispose/Replacement (Dispose)
+
+System: IT Items Inventory Management
+
+Page: editmeeting.aspx (Transaction → Dispose/Replacement)
+
+
+---
+
+1. Function Overview
+
+The Dispose/Replacement Function is responsible for handling IT items that are being removed from active inventory due to damage, obsolescence, or end-of-life status.
+It ensures that disposed items are properly tracked and excluded from available stock reports.
+This process also records warranty details for audit and validation purposes.
+
+
+---
+
+2. Process Flow
+
+1. User navigates to Transaction → Dispose/Replacement.
+
+
+2. User inputs or scans the Control No of the item to be disposed.
+
+
+3. System retrieves item details from the inventory record (via Control No).
+
+
+4. User provides the Warranty information (for record reference).
+
+
+5. User clicks Dispose to finalize the transaction.
+
+
+6. System validates the input and updates the item status to Disposed in the database.
+
+
+7. User may click Clear to reset the form for another entry.
+
+
+
+
+---
+
+3. Field Specifications
+
+Field Name	Type/Control	Required	Description
+
+Control No	TextBox / Scanner	✅ Yes	Unique identifier that links the item to its “In” or “Out” record.
+Warranty	TextBox	✅ Yes	Indicates the warranty duration or expiration date of the item being disposed. Used for reference in disposal justification.
+
+
+
+---
+
+4. Validation Rules
+
+Control No must exist in inventory and not already marked as “Disposed.”
+
+Warranty field must not be empty; must contain text or a valid date format.
+
+Disposal is not allowed if the item is currently In Transfer or Out for Deployment.
+
+System prompts user confirmation:
+
+> “Are you sure you want to dispose this item? This action cannot be undone.”
+
+
+
+Once disposed, the item is excluded from stock count and active inventory queries.
+
+
+
+---
+
+5. Database Interaction
+
+Stored Procedures:
+
+sp_ValidateItemForDisposal → Checks if Control No is valid and not disposed.
+
+sp_InsertItemDisposal → Records disposal details into the disposal history table.
+
+sp_UpdateItemStatus → Updates item’s status to “Disposed” in the main inventory table.
+
+
+Tables Involved:
+
+Table Name	Purpose
+
+tbl_ItemIn	Reference for original item data.
+tbl_ItemOut	Used to verify deployment status.
+tbl_ItemDisposal	Stores details of all disposed or replaced items.
+
+
+
+---
+
+6. Error Handling
+
+Scenario	System Response
+
+Invalid or missing Control No	“Control No not found in active inventory.”
+Item already disposed	“Item already marked as disposed.”
+Missing warranty field	“Please enter warranty information.”
+Database transaction error	“Unable to process disposal. Please contact system admin.”
+
+
+
+---
+
+7. Buttons and Actions
+
+Button	Description
+
+Clear	Resets all input fields for a new entry.
+Dispose	Validates, saves disposal record, and updates the item’s status to “Disposed.”
+
+
+
+---
+
+8. Output / Result
+
+The item is permanently tagged as Disposed in the inventory system.
+
+A disposal record is inserted into tbl_ItemDisposal with Control No, warranty, date, and user ID.
+
+The disposed item no longer appears in the In List or Out List of active inventory.
+
+System displays confirmation message:
+
+> “Item successfully marked as disposed.”
+
+
+
+
+
+---
+
+9. Integration and Dependencies
+
+Linked with In Module and Out Module via Control No.
+
+Affects reporting in Stock Summary and Asset Lifecycle Reports.
+
+Can integrate with a Replacement Request Function (future enhancement).
+
+
+
+---
+
+10. Future Enhancements
+
+Add Reason for Disposal (e.g., damaged, obsolete, lost).
+
+Add Disposed By and Approved By fields for audit tracking.
+
+Add Upload File/Photo for proof of disposal.
+
+Enable Export to PDF/Excel for disposal reports.
+
+Include Replacement Function to automatically link new items replacing disposed ones.
+
+
+
+---
+
+Would you like me to now combine all four function specifications —
+🟢 In,
+🟢 List,
+🟡 Out (Transfer),
+🔴 Dispose/Replacement (Dispose) —
+into one polished System Function Specification Document (PDF or DOCX) with proper headers, tables, and layout for your project submission?
