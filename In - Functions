@@ -1,1 +1,183 @@
 102325
+
+Sure 👍 Here’s a sample Function Specification document for your “IT Items Inventory Management – In Module” (based on the screenshot you shared).
+You can use this format for other modules too (like Out, Transfer, QR Printing, etc.).
+
+
+---
+
+🧩 FUNCTION SPECIFICATION
+
+Module: In (Receiving / Adding New Inventory Items)
+
+System: IT Items Inventory Management
+
+Page: editmeeting.aspx (Transaction → In)
+
+
+---
+
+1. Function Overview
+
+The In Function is responsible for adding new IT items into the inventory system. It captures essential item details such as category, serial number, brand/model, location, and quantity. This ensures accurate tracking, categorization, and reporting of assets.
+
+
+---
+
+2. Process Flow
+
+1. User navigates to Transaction → In.
+
+
+2. User scans or inputs the Category Code.
+
+
+3. System automatically generates or loads the corresponding Control No.
+
+
+4. User inputs the following required fields:
+
+Brand/Model
+
+Serial No
+
+Quantity/Length
+
+Location Stored
+
+
+
+5. User clicks Save to List to temporarily store the item in a grid or list for review.
+
+
+6. Once all items are added, user can finalize the transaction to save data into the database.
+
+
+7. User may also Clear fields to reset or List to view saved records.
+
+
+
+
+---
+
+3. Field Specifications
+
+Field Name	Type/Control	Required	Description
+
+Category Code	TextBox / Scan	✅ Yes	Refers to the classification of the item (e.g., LAPTOP, CABLE).
+Control No	Auto-generated / TextBox	✅ Yes	Unique identifier for each transaction batch.
+Brand/Model	TextBox	✅ Yes	The brand and model of the IT item.
+Serial No	TextBox / Scan	✅ Yes	The unique serial number of the item. Prevents duplicates.
+Quantity/Length	Numeric TextBox	✅ Yes	Quantity or total length of the item (depending on UOM).
+Location Stored	Dropdown / TextBox	✅ Yes	Indicates the current storage or installation location.
+
+
+
+---
+
+4. Validation Rules
+
+All required fields (*) must be filled before saving.
+
+Serial No must be unique within the same Control No.
+
+Quantity/Length must be greater than zero.
+
+Category Code must exist in the Category Master table.
+
+System prevents duplicate entries (same Serial No and Control No).
+
+
+
+---
+
+5. Database Interaction
+
+Stored Procedure: sp_InsertItemIn
+
+Input Parameters:
+
+@ControlNo
+
+@CategoryCode
+
+@BrandModel
+
+@SerialNo
+
+@Quantity
+
+@LocationStored
+
+@CreatedBy
+
+
+Output:
+
+Success message or error code for duplicate/invalid data.
+
+
+Tables Involved:
+
+tbl_ItemIn – stores the main transaction details
+
+tbl_Category – reference for category validation
+
+tbl_Location – reference for location codes
+
+
+
+---
+
+6. Error Handling
+
+Scenario	System Response
+
+Missing required field	Show message: “Please fill all required fields.”
+Duplicate serial detected	Show message: “Serial No already exists under this Control No.”
+Database error	Show message: “Unable to save data. Please contact admin.”
+
+
+
+---
+
+7. Buttons and Actions
+
+Button	Description
+
+List	Redirects to list view of existing “In” transactions.
+Clear	Clears all input fields for new entry.
+Save to List	Validates and temporarily stores data for review before final save.
+
+
+
+---
+
+8. Output / Result
+
+Item successfully added to temporary list or permanently stored in tbl_ItemIn.
+
+System displays confirmation: “Item successfully added to list.”
+
+User can view all records in List View with generated Control No and timestamp.
+
+
+
+---
+
+9. Future Enhancements (Optional)
+
+Auto QR code generation for each Control No.
+
+Integration with Transfer and Out modules.
+
+Print/export function for “In” transaction summary.
+
+LDAP-based user authentication and activity logging.
+
+
+
+---
+
+Would you like me to make a version formatted for documentation (like a .docx or .pdf layout for your system folder)?
+I can generate it automatically.
