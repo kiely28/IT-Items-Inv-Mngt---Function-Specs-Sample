@@ -1,0 +1,191 @@
+Perfect 👍 This is the Out (Transfer/Deployment) module of your IT Items Inventory Management System — where items are deployed, transferred, or moved out of storage.
+Here’s a complete Function Specification for that module, formatted in the same style as your “In” module.
+
+
+---
+
+🧩 FUNCTION SPECIFICATION
+
+Module: Out (Transfer / Deployment of IT Items)
+
+System: IT Items Inventory Management
+
+Page: editmeeting.aspx (Transaction → Out)
+
+
+---
+
+1. Function Overview
+
+The Out Function handles the transfer or deployment of IT items from their storage location to another area, user, or department.
+This module ensures that inventory records remain accurate by deducting quantities from the storage location and updating item status as “Deployed” or “Transferred.”
+
+
+---
+
+2. Process Flow
+
+1. User navigates to Transaction → Out.
+
+
+2. User inputs or scans the Control No of the item to be transferred.
+
+
+3. The system retrieves related details (e.g., category, brand, serial number, current stock).
+
+
+4. User enters the following required fields:
+
+Quantity/Length
+
+Warranty
+
+Location of Deployment
+
+
+
+5. System validates the quantity and item availability.
+
+
+6. User clicks Deploy to finalize the transfer.
+
+
+7. System updates the inventory database and records the transaction in the Out History.
+
+
+8. User may click Clear to reset all fields.
+
+
+
+
+---
+
+3. Field Specifications
+
+Field Name	Type/Control	Required	Description
+
+Control No	TextBox / Auto Lookup	✅ Yes	Unique ID linking the item to its “In” record. Used to fetch item details.
+Quantity/Length	Numeric TextBox	✅ Yes	Number or length of units being deployed. Must not exceed available stock.
+Warranty	TextBox	✅ Yes	Warranty information (e.g., 1 Year, 6 Months). Helps track support coverage.
+Location of Deployment	TextBox / Dropdown	✅ Yes	Indicates the new destination of the item (e.g., Office A, IT Room, Site B).
+
+
+
+---
+
+4. Validation Rules
+
+Control No must exist in the In inventory records.
+
+Quantity/Length cannot exceed current available stock.
+
+Warranty field must not be empty and may follow standard format (e.g., numeric + duration).
+
+Location of Deployment is required for record accuracy.
+
+Prevent multiple “Out” transactions for the same Control No if stock = 0.
+
+System prompts confirmation before final deployment (“Confirm deploy item to this location?”).
+
+
+
+---
+
+5. Database Interaction
+
+Stored Procedures:
+
+sp_ValidateItemAvailability → Verifies stock availability for a given Control No.
+
+sp_InsertItemOut → Inserts deployment/transfer record into the tbl_ItemOut table.
+
+sp_UpdateItemStock → Updates stock quantity in tbl_ItemIn or main inventory table.
+
+
+Tables Involved:
+
+Table Name	Purpose
+
+tbl_ItemIn	Reference for checking stock and original item details.
+tbl_ItemOut	Stores records of all deployed/transferred items.
+tbl_Location	Stores reference locations for deployment.
+
+
+
+---
+
+6. Error Handling
+
+Scenario	System Response
+
+Invalid Control No	“Control No not found in inventory.”
+Quantity exceeds available stock	“Insufficient quantity available for deployment.”
+Missing required fields	“Please fill all required fields before deploying.”
+Database or server error	“Unable to process request. Please try again later.”
+
+
+
+---
+
+7. Buttons and Actions
+
+Button	Description
+
+Clear	Clears all input fields and resets the form.
+Deploy	Validates and saves the transfer record to the database. Updates stock accordingly.
+
+
+
+---
+
+8. Output / Result
+
+Upon successful deployment:
+
+The transaction is stored in tbl_ItemOut.
+
+The stock quantity in tbl_ItemIn decreases.
+
+A confirmation message is displayed: “Item successfully deployed.”
+
+
+The deployed item’s status becomes “Out”, and its Control No remains traceable via reports or search.
+
+
+
+---
+
+9. Integration and Dependencies
+
+Linked to In Module via Control No.
+
+May integrate with:
+
+QR Code Scanner (for Control No input).
+
+Stock Summary Module (for viewing remaining items).
+
+Reports Module (for deployment logs).
+
+
+
+
+---
+
+10. Future Enhancements
+
+Add “Deployed By” and “Received By” fields for accountability.
+
+Add QR Code confirmation to verify deployment at destination.
+
+Include Export to PDF/Excel for deployment history.
+
+Add Return or Recall Function for items coming back to storage.
+
+Implement User Role Validation (only authorized users can deploy).
+
+
+
+---
+
+Would you like me to now combine your In, List, and Out module function specs into one formatted System Functional Specification Document (DOCX or PDF) for your project documentation folder?
