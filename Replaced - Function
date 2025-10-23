@@ -1,0 +1,169 @@
+Here’s a Function Specification Document for your module Dispose/Replacement (Replaced) — matching the layout and flow of your IT Items Inventory Management System.
+
+
+---
+
+🧩 FUNCTION SPECIFICATION
+
+Module: Dispose/Replacement (Replaced)
+
+
+---
+
+1. Module Name
+
+Dispose/Replacement (Replaced)
+
+
+---
+
+2. Module Description
+
+This module manages the process of replacing a defective or disposed IT item with a new one.
+It allows the user to link the old (replaced) item and the new replacement item by their control numbers, update their statuses in the database, and record the transaction for maintenance history and audit tracking.
+
+
+---
+
+3. Objectives
+
+To record replacement transactions between old and new IT items.
+
+To maintain accurate item tracking and lifecycle management.
+
+To ensure the replaced item is marked correctly (e.g., “Replaced” or “Disposed”).
+
+To activate the new item and link it to the replaced one for traceability.
+
+
+
+---
+
+4. Inputs
+
+Field	Description	Type	Validation
+
+Control No of Item to be Replaced*	The unique control number of the defective or old item.	Textbox	Required; must exist in the system; must not already be replaced/disposed.
+Control No of the New Item*	The control number of the new replacement item.	Textbox	Required; must exist in the system; must not already be in use or active.
+
+
+
+---
+
+5. Buttons / Actions
+
+Button	Description	Function
+
+Clear	Resets both input fields.	Clears Control No inputs.
+Replaced	Confirms and processes the replacement transaction.	Validates both Control Nos, updates item statuses, and records the replacement details.
+
+
+
+---
+
+6. System Process Flow
+
+1. User Accesses Page:
+The user navigates to Transaction → Dispose/Replacement → Replaced.
+
+
+2. Input Validation:
+
+User inputs the Control No of the Item to be Replaced (old item).
+
+User inputs the Control No of the New Item (replacement).
+
+System checks:
+
+Both control numbers exist.
+
+They are not the same.
+
+The old item is currently Defective or Disposed.
+
+The new item is available (not active or assigned).
+
+
+
+
+3. Replacement Execution:
+When the user clicks Replaced:
+
+The system updates the old item’s status → Replaced.
+
+The system updates the new item’s status → Active (Replacement).
+
+The system logs the transaction in the Replacement History table with details (old control no, new control no, date, user ID).
+
+
+
+4. System Response:
+
+Displays success message:
+
+> “Item [Old Control No] has been successfully replaced with [New Control No].”
+
+
+
+Optionally, system refreshes the form or redirects to the Replacement Transaction List.
+
+
+
+5. Error Handling:
+
+Invalid Control No → “Control Number not found.”
+
+Same Control Nos → “Old and New Control Numbers cannot be the same.”
+
+Missing Fields → “Please complete all required fields.”
+
+Invalid Status → “Item is not eligible for replacement.”
+
+
+
+
+
+---
+
+7. Database Tables Affected
+
+Table	Action	Description
+
+tbl_ITItems	UPDATE	- Updates Status = ‘Replaced’ for old item. <br> - Updates Status = ‘Active (Replacement)’ for new item.
+tbl_ReplacementHistory	INSERT	Inserts log entry with OldControlNo, NewControlNo, Date, UserID.
+
+
+
+---
+
+8. Output
+
+Updated database entries reflecting new item status.
+
+Replacement transaction record stored for audit.
+
+Success or error notification message to user.
+
+
+
+---
+
+9. User Roles
+
+Role	Permission
+
+Administrator	Full access to record and view replacements.
+Technician/User	Can replace items assigned under their scope.
+
+
+
+---
+
+10. Expected Result
+
+Upon clicking Replaced with valid control numbers, the system successfully updates both item records, logs the transaction in Replacement History, and confirms success to the user.
+
+
+---
+
+Would you like me to include next a sample SQL stored procedure (e.g., sp_ReplaceItem) and ASP.NET (C#) code-behind logic for the “Replaced” button to match this specification?
