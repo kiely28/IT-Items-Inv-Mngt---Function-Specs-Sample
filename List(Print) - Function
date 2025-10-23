@@ -1,0 +1,156 @@
+Perfect 👍—this second screenshot clearly shows the List Page (In List View) after clicking “Save to List” and then “List” in your IT Items Inventory Management System.
+
+Here’s a continuation of the Function Specification to describe this List Page.
+
+
+---
+
+🧩 FUNCTION SPECIFICATION
+
+Module: In List (Inventory Items Record View)
+
+System: IT Items Inventory Management
+
+Page: inlist.aspx (Transaction → In → List)
+
+
+---
+
+1. Function Overview
+
+The In List Function displays all saved IT item entries that were added through the “In” module.
+It allows users to view, search, edit, delete, and print the list of items based on Control ID, Category, or other criteria.
+Each record includes a QR Code for tracking and verification purposes.
+
+
+---
+
+2. Process Flow
+
+1. User completes the In entry form and clicks Save to List.
+
+
+2. Data is validated and temporarily or permanently stored in the database.
+
+
+3. When the user clicks List, the system redirects to the In List page.
+
+
+4. The In List page retrieves and displays all “In” transaction records from the database.
+
+
+5. User can:
+
+View items by page (pagination enabled).
+
+Search using the top-right search box.
+
+Edit or delete records through the Actions column.
+
+Print the entire list or a filtered view.
+
+Scan QR Code for quick item lookup.
+
+
+
+
+
+---
+
+3. Field/Column Specifications
+
+Column Name	Description
+
+#	Auto-incremented row number.
+Category	Item category code (e.g., SW for Switch, LAP for Laptop).
+Brand	The brand/model of the item.
+Quantity/Length	The total number or measurement of the item.
+Control ID	Unique identifier automatically generated per batch or entry.
+Serial No	Unique serial number assigned to each physical item.
+Location	Location or storage area of the item (e.g., F3).
+QR Code	Automatically generated QR code linked to the Control ID for tracking.
+Actions	Contains edit ✏️ and delete 🗑️ buttons for record management.
+
+
+
+---
+
+4. Button and UI Functions
+
+Button	Description
+
+Print	Exports the current list view to PDF or paper for documentation.
+Entries per page (Dropdown)	Allows user to choose how many items are displayed per page (10, 25, 50, etc.).
+Search	Filters displayed items based on any keyword (Category, Serial, Brand, Control ID).
+Edit (✏️)	Opens a modal or redirects to edit page for selected item.
+Delete (🗑️)	Prompts confirmation before deleting the record from database.
+Pagination (1, 2, …)	Navigates between multiple pages of item entries.
+
+
+
+---
+
+5. Validation Rules
+
+Delete action requires user confirmation (“Are you sure you want to delete this item?”).
+
+Edit action loads current data into form with validation similar to the “In” module.
+
+Search works in real-time (AJAX or DataTables filtering).
+
+QR Code dynamically generated per Control ID using library (e.g., QRCoder or Google Chart API).
+
+
+
+---
+
+6. Database Interaction
+
+Stored Procedures:
+
+sp_GetItemInList → Retrieve list of items with optional search/filter parameters.
+
+sp_UpdateItemIn → Update item details.
+
+sp_DeleteItemIn → Delete record by Serial No or Control ID.
+
+
+Tables Used:
+
+tbl_ItemIn – Main source of displayed records.
+
+tbl_QRCode (optional) – Stores generated QR code data if saved as image file.
+
+
+
+---
+
+7. Output
+
+User sees a paginated, searchable, and printable list of all “In” records.
+
+Each record is traceable by Control ID and QR Code.
+
+Actions (edit/delete) update the data in real-time or via refresh.
+
+The list provides visibility for inventory auditing and QR verification.
+
+
+
+---
+
+8. Future Enhancements
+
+Add Filter by Date Range, Category, or Location.
+
+Add Export to Excel (.xlsx) option.
+
+Include Status column (e.g., In Stock, Transferred, Out).
+
+Add Audit Trail to track changes made by users.
+
+
+
+---
+
+Would you like me to combine this with the In Module specification into one formatted System Design Document (PDF or DOCX) so you can attach it to your project documentation?
