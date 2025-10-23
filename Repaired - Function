@@ -1,0 +1,159 @@
+Here’s a sample Function Specification Document for your module Dispose/Replacement (Repaired) — designed to fit your IT Items Inventory Management System.
+
+
+---
+
+🧩 FUNCTION SPECIFICATION
+
+Module: Dispose/Replacement (Repaired)
+
+
+---
+
+1. Module Name
+
+Dispose/Replacement (Repaired)
+
+
+---
+
+2. Module Description
+
+This module handles the process of tagging defective IT items that have been successfully repaired.
+It updates the item’s record in the database, restoring its status from disposed or defective back to active, and logs the repair transaction for tracking and audit purposes.
+
+
+---
+
+3. Objectives
+
+To record and manage repaired IT equipment.
+
+To maintain accurate item status history (e.g., from defective → repaired → active).
+
+To allow validation based on Control Number and Warranty information.
+
+To ensure transparency in repair tracking for audit and maintenance purposes.
+
+
+
+---
+
+4. Inputs
+
+Field	Description	Type	Validation
+
+Control No*	Unique identifier assigned to each item.	Textbox	Required; must exist in database.
+Warranty*	Warranty status or repair warranty period.	Textbox	Required; accepts text or numeric (e.g., “6 months”).
+
+
+
+---
+
+5. Buttons / Actions
+
+Button	Description	Function
+
+Clear	Resets all input fields.	Clears Control No and Warranty fields.
+Repaired	Confirms and updates the item as repaired.	Validates Control No, updates status, and logs transaction.
+
+
+
+---
+
+6. System Process Flow
+
+1. User Accesses Page:
+The user navigates to Transaction → Dispose/Replacement → Repaired.
+
+
+2. Input Validation:
+
+The user enters the Control No of the defective item.
+
+The system checks if the Control No exists and if it’s currently tagged as Defective or Disposed.
+
+The Warranty field must not be blank.
+
+
+
+3. Update Item Record:
+
+When the Repaired button is clicked:
+
+The system updates the item’s status in the database to Active/Repaired.
+
+The system logs repair details (Control No, Warranty info, Date, and User ID).
+
+
+
+
+4. System Response:
+
+Displays success message:
+
+> “Item [Control No] has been successfully marked as Repaired.”
+
+
+
+Optionally refreshes or redirects to item list view.
+
+
+
+5. Error Handling:
+
+Invalid Control No → “Control Number not found.”
+
+Missing fields → “Please complete all required fields.”
+
+Already repaired → “Item already marked as repaired.”
+
+
+
+
+
+---
+
+7. Database Tables Affected
+
+Table	Action	Description
+
+tbl_ITItems	UPDATE	Updates Status = ‘Repaired’ and Warranty = user input
+tbl_RepairHistory	INSERT	Inserts log entry (ControlNo, Date, Warranty, UserID)
+
+
+
+---
+
+8. Output
+
+Updated item record reflecting the Repaired status.
+
+Transaction log entry stored in repair history.
+
+User notification (success or error message).
+
+
+
+---
+
+9. User Roles
+
+Role	Permission
+
+Administrator	Full access (mark items repaired, view all logs).
+Technician/User	Can only repair assigned items.
+
+
+
+---
+
+10. Expected Result
+
+When the user enters a valid Control No and clicks Repaired, the system updates the item’s status, records the repair history, and confirms the successful operation.
+
+
+---
+
+Would you like me to include a sample SQL stored procedure and ASP.NET code-behind logic for the “Repaired” button (e.g., btnRepaired_Click event)?
+That will make this specification ready for actual implementation.
