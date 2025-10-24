@@ -1,0 +1,362 @@
+Excellent catch 👍 — thank you for pointing that out!
+Let’s include the In Module (the first step of the process) and then show the complete combined Function Specification Summary, covering all five modules of your IT Items Inventory Management System:
+
+In
+
+Out (Transfer)
+
+Dispose (Dispose)
+
+Repaired
+
+Replaced
+
+
+
+---
+
+🧾 FUNCTION SPECIFICATION SUMMARY
+
+System: IT Items Inventory Management System
+
+Main Category: Transaction Modules
+
+
+---
+
+🔹 1. Module: In (Receiving / Stock-In)
+
+Description:
+
+This module is used to record newly received IT items or equipment being added into inventory. Each item is assigned a unique Control Number and a QR code for identification and tracking.
+
+Objectives:
+
+To register new items with detailed specifications.
+
+To generate and assign unique control numbers.
+
+To ensure all items have an initial location and quantity record.
+
+To provide the base data for subsequent transactions (Out, Dispose, etc.).
+
+
+Inputs:
+
+Field	Description	Validation
+
+Category Code	Defines item type (e.g., SW, CAB, PC)	Required
+Control No	Auto-generated unique item number	Auto-generated
+Brand/Model	Item brand and model	Required
+Serial No	Manufacturer serial number	Required
+Quantity/Length	Quantity or cable length	Required, numeric
+Location Stored	Physical location in storage	Required
+
+
+Buttons:
+
+Button	Action
+
+Clear	Clears all input fields
+Save to List	Adds entered item to the temporary list for review
+List	Displays all items added under the current transaction batch
+
+
+Process Flow:
+
+1. User inputs category, brand/model, serial number, and other details.
+
+
+2. System auto-generates Control No based on category and sequence.
+
+
+3. On Save to List, data is temporarily stored for review.
+
+
+4. When the user clicks List, a table of added items appears (with QR codes and edit/delete actions).
+
+
+5. Data is finalized and saved to the database after confirmation.
+
+
+
+Database Actions:
+
+tbl_ITItems → Insert new item record.
+
+tbl_Transactions → Log the “In” transaction.
+
+tbl_QRCode → Generate and link QR code to control number.
+
+
+
+---
+
+🔹 2. Module: Out (Transfer / Deployment)
+
+Description:
+
+This module handles transferring or deploying items from storage to a department, user, or another location.
+
+Objectives:
+
+To track item deployment accurately.
+
+To record new deployment location and warranty information.
+
+To update stock balance.
+
+
+Inputs:
+
+Field	Description	Validation
+
+Control No	Unique identifier of item	Required
+Quantity/Length	Quantity or length to transfer	Required, numeric
+Warranty	Warranty condition	Required
+Location of Deployment	Destination of item	Required
+
+
+Buttons:
+
+Button	Action
+
+Clear	Clears form fields
+Deploy	Saves transaction and updates item location
+
+
+Process Flow:
+
+1. User inputs Control No and deployment details.
+
+
+2. System validates if the item is available.
+
+
+3. On Deploy, system updates location and creates an Out record.
+
+
+4. Confirmation message displayed.
+
+
+
+Database Actions:
+
+tbl_ITItems → Update location and status = Deployed.
+
+tbl_Transactions → Insert Out transaction record.
+
+
+
+---
+
+🔹 3. Module: Dispose/Replacement (Dispose)
+
+Description:
+
+Used to log items that are defective, obsolete, or beyond repair for removal from inventory.
+
+Objectives:
+
+To properly tag items as Disposed.
+
+To maintain disposal audit trail.
+
+
+Inputs:
+
+Field	Description	Validation
+
+Control No	Item to be disposed	Required
+Warranty	Warranty status (Expired/In Warranty)	Required
+
+
+Buttons:
+
+Button	Action
+
+Clear	Clears input
+Dispose	Updates item status and logs disposal
+
+
+Process Flow:
+
+1. User inputs Control No and warranty info.
+
+
+2. System validates if the item exists.
+
+
+3. On Dispose, item is marked as Disposed.
+
+
+4. Transaction is logged for records.
+
+
+
+Database Actions:
+
+tbl_ITItems → Update Status = 'Disposed'.
+
+tbl_DisposeHistory → Insert log record.
+
+
+
+---
+
+🔹 4. Module: Dispose/Replacement (Repaired)
+
+Description:
+
+Handles items that were previously defective or disposed and are now fixed and returned to service.
+
+Objectives:
+
+To mark repaired items as active again.
+
+To retain repair logs for tracking.
+
+
+Inputs:
+
+Field	Description	Validation
+
+Control No	Item that was repaired	Required
+Warranty	Updated warranty after repair	Required
+
+
+Buttons:
+
+Button	Action
+
+Clear	Resets input
+Repaired	Updates item status and logs repair
+
+
+Process Flow:
+
+1. User inputs item’s Control No and warranty.
+
+
+2. System checks if the item was previously disposed or defective.
+
+
+3. On Repaired, item’s status becomes Active (Repaired).
+
+
+4. Record is logged in repair history.
+
+
+
+Database Actions:
+
+tbl_ITItems → Update Status = 'Active (Repaired)'.
+
+tbl_RepairHistory → Insert repair log.
+
+
+
+---
+
+🔹 5. Module: Dispose/Replacement (Replaced)
+
+Description:
+
+Records when an old or defective item is replaced by a new one. Links the old and new items for reference.
+
+Objectives:
+
+To manage replacement transactions.
+
+To connect old items to new replacements for audit tracking.
+
+
+Inputs:
+
+Field	Description	Validation
+
+Control No of Item to be Replaced	Old item	Required
+Control No of the New Item	Replacement item	Required
+
+
+Buttons:
+
+Button	Action
+
+Clear	Clears both input fields
+Replaced	Updates both items’ records and logs transaction
+
+
+Process Flow:
+
+1. User enters old and new control numbers.
+
+
+2. System checks both exist and validates eligibility.
+
+
+3. On Replaced, system updates:
+
+Old item → Status = 'Replaced'
+
+New item → Status = 'Active (Replacement)'
+
+
+
+4. Record logged to history table.
+
+
+
+Database Actions:
+
+tbl_ITItems → Update both items’ statuses.
+
+tbl_ReplacementHistory → Insert replacement transaction log.
+
+
+
+---
+
+🔹 6. Common Features Across All Modules
+
+Feature	Description
+
+Validation	All fields validated before saving; control numbers must exist.
+QR Code Integration	Every item has a QR for scanning and quick lookup.
+Audit Trail	Each action logs user, date, and transaction type.
+User Roles	Admin: full access; User/Technician: limited per module.
+Search & Filter	DataTables used for fast record lookup and filtering.
+
+
+
+---
+
+🔹 7. Status Transition Summary
+
+Transaction	From Status	To Status
+
+In	None (New Item)	In Stock
+Out (Deploy)	In Stock	Deployed
+Dispose	In Stock / Defective	Disposed
+Repaired	Disposed / Defective	Active (Repaired)
+Replaced	Defective / Disposed	Replaced (Old) / Active (Replacement) (New)
+
+
+
+---
+
+🔹 8. Expected Outputs
+
+Real-time inventory updates across all modules.
+
+Accurate status, warranty, and location data for all items.
+
+QR-based lookup for each asset.
+
+Historical audit trail of all movements and changes.
+
+
+
+---
+
+Would you like me to add a visual process diagram showing how data flows between these modules (for example, In → Out → Dispose/Repaired/Replaced) and connects to your main inventory table? It would make a great addition for your documentation or presentation.
