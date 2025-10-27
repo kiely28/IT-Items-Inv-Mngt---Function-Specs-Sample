@@ -189,3 +189,201 @@ Implement User Role Validation (only authorized users can deploy).
 ---
 
 Would you like me to now combine your In, List, and Out module function specs into one formatted System Functional Specification Document (DOCX or PDF) for your project documentation folder?
+
+
+---
+
+
+Absolutely ✅ — here’s a Function Specification focused only on the List Screen (In/Receiving – Items List), covering Input and Output specifications just for that page (the one shown in your screenshot).
+
+This version fits your IT Items Inventory Management project style and aligns with ASP.NET Web Forms + DataTables structure.
+
+
+---
+
+🧩 Function Specification Document
+
+Module: In / Receiving – List Screen
+
+Program File: InList.aspx / InList.aspx.cs
+
+System: IT Items Inventory Management
+
+Developer: [Your Name]
+
+Date: [Date Created]
+
+
+---
+
+1. Module Description
+
+The List Screen displays all items received and saved from the In/Receiving module.
+It provides a searchable, paginated, and printable view of items with details such as Category, Brand, Quantity/Length, Serial Number, Location, and QR Code.
+Users can also perform actions such as Edit and Delete on each record.
+
+
+---
+
+2. Input Specification (User Interaction / Actions)
+
+Input / Action	Source	Description	Validation / Rules	Example / Expected Behavior
+
+Search Box	User	Filters records in the DataTable based on keyword (Category, Brand, Serial, Location).	Real-time filtering; no empty validation needed.	Typing “Cisco” shows only Cisco items.
+Entries per Page Dropdown	User	Changes number of rows displayed per page (10, 25, 50, 100).	Default = 10	Selecting “25” shows 25 items per page.
+Pagination Controls	User	Navigates between pages of results.	Enabled only if results exceed visible page limit.	Clicking “2” shows next 10 entries.
+Print Button	User	Exports or prints the current list of items.	Requires at least one record to print.	Generates PDF or print preview with QR codes.
+Edit Icon (✏️)	User	Opens item record for editing.	Editable fields: Brand/Model, Location, Serial No (optional).	Clicking ✏️ on row 1 opens InEdit.aspx?ID=SW-1025-001.
+Delete Icon (🗑️)	User	Deletes a specific record from the list.	Requires confirmation prompt (“Are you sure?”).	Clicking 🗑️ removes record from tbl_in.
+QR Code Click (optional)	User	Opens enlarged QR image or download.	Optional feature; depends on system configuration.	Clicking QR displays popup QR preview.
+
+
+
+---
+
+3. Output Specification (Displayed Data / Results)
+
+Output Field	Description	Source / Formula	Format / Example
+
+#	Auto-generated row number per page	DataTable Index	1, 2, 3, …
+Category	Category Code of the item	tbl_category.category_code	SW
+Brand	Item brand or model	tbl_in.brand_model	Cisco Switch
+Quantity/Length	Number of items or length	tbl_in.quantity	1 or 300
+Control ID	Auto-generated ID for the item	tbl_in.control_no	SW-1025-001
+Serial No	Item’s unique serial number	tbl_in.serial_no	98654321
+Location	Storage location	tbl_in.location_stored	F3
+QR Code	QR image linked to Control ID	Generated dynamically or stored path in tbl_in.qr_code_path	(QR Image)
+Actions	Edit / Delete icons	DataTable action column	✏️ / 🗑️
+
+
+
+---
+
+4. Processing Logic
+
+1. Page Load (Initial Display)
+
+System executes query:
+
+SELECT 
+    i.control_no,
+    c.category_code,
+    i.brand_model,
+    i.quantity,
+    i.serial_no,
+    i.location_stored,
+    i.qr_code_path
+FROM tbl_in i
+INNER JOIN tbl_category c ON i.category_code = c.category_code
+ORDER BY i.date_received DESC;
+
+Data is bound to a DataTable or GridView with client-side search and pagination (using jQuery DataTables).
+
+
+
+2. Search Filtering
+
+The DataTable automatically filters visible rows based on the search box keyword.
+
+
+
+3. Edit Record
+
+When user clicks ✏️, the system redirects to the “In Edit” page:
+
+InEdit.aspx?ControlNo=SW-1025-001
+
+The selected record is loaded for update.
+
+
+
+4. Delete Record
+
+When user clicks 🗑️, a confirmation prompt appears.
+
+On confirm:
+
+DELETE FROM tbl_in WHERE control_no = @ControlNo
+
+Table refreshes and success message appears.
+
+
+
+5. Print Function
+
+The “Print” button triggers print view or exports to PDF.
+
+Data includes QR Codes, Control No, and essential columns.
+
+
+
+6. QR Code Display
+
+Each record shows its QR code.
+
+The QR image is either:
+
+Loaded from tbl_in.qr_code_path, or
+
+Generated dynamically using a QR library based on control_no.
+
+
+
+
+
+
+---
+
+5. Output Behavior (System Response)
+
+Event	System Response
+
+Page Load	Displays latest “In” items in paginated DataTable.
+Search Entry	Filters records instantly by keyword.
+Change Page	Displays selected page of records.
+Click Edit	Opens selected item’s edit page.
+Click Delete	Confirms deletion, removes item, refreshes table.
+Click Print	Opens print preview or generates PDF.
+QR Hover / Click	Shows enlarged image or download prompt (optional).
+
+
+
+---
+
+6. Example Data Display
+
+#	Category	Brand	Quantity/Length	Control ID	Serial No	Location	QR Code	Actions
+
+1	SW	Cisco Switch	1	SW-1025-001	98654321	F3	[QR]	✏️ 🗑️
+2	NT-AT	Panasonic Phone	1	NTAT-1025-002	123456	WH-A1	[QR]	✏️ 🗑️
+3	CAB-LAN	LAN Cable	300	CABLAN-1025-003	N/A	WH-C2	[QR]	✏️ 🗑️
+
+
+
+---
+
+7. Database Tables Involved
+
+Table Name	Purpose	Key Fields
+
+tbl_in	Stores all received item details.	control_no, category_code, serial_no, quantity, location_stored, qr_code_path
+tbl_category	Reference for item categories, warranty, and UOM.	category_code, category_name, period, uom
+tbl_location	Reference table for valid storage locations.	location_code, location_name
+
+
+
+---
+
+8. Summary (Input–Output Overview)
+
+Stage	Description	Actor	Data Source / Target
+
+Input	Search keyword, pagination control, or action button click	User	Browser / UI
+Process	Retrieve and filter data, handle CRUD operations	System	SQL (tbl_in, tbl_category)
+Output	Display table with item details, QR Code, and action icons	System	DataTable (UI)
+
+
+
+---
+
+Would you like me to include the “Print” function specification next — describing how the QR codes and item list are exported to PDF or print view (including layout and columns)?
