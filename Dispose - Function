@@ -183,3 +183,152 @@ Would you like me to now combine all four function specifications —
 🟡 Out (Transfer),
 🔴 Dispose/Replacement (Dispose) —
 into one polished System Function Specification Document (PDF or DOCX) with proper headers, tables, and layout for your project submission?
+
+
+---
+
+Perfect 👍 Based on your screenshot and description, here’s a complete and professional Function Specification document for your Dispose/Replacement module — consistent with your “In” and “Out” specs format.
+
+
+---
+
+🧾 FUNCTION SPECIFICATION
+
+Module: Dispose / Replacement
+
+Page: Transaction / DisposeReplacement
+
+File: DisposeReplacement.aspx
+
+
+---
+
+1. Module Description
+
+The Dispose/Replacement module manages the tagging or removal of items that are no longer covered by warranty, defective, or due for replacement.
+When the user scans a Control No, the system automatically retrieves the item’s details (including Warranty Expiry Date) from the database.
+If the warranty is expired, the Dispose button becomes visible, allowing the user to officially mark the item as Disposed in the system.
+
+
+---
+
+2. Input Specifications
+
+Field Name	Description / Source	User Action	Logic / Validation
+
+Control No*	Unique ID assigned during the In transaction.	Scanned by user	- System searches tbl_In for the Control No.<br>- If not found → show error: “Invalid Control No or item not found.”<br>- If found, auto-populate Warranty field.
+Warranty*	Warranty expiration date of the item.	Auto-filled	- Retrieved from the record in tbl_In.<br>- If warranty is expired → Dispose button becomes visible.<br>- If still active → Dispose button remains hidden.
+
+
+
+---
+
+3. Processing Logic
+
+1. Scan Control No
+
+User scans or enters the Control No.
+
+System retrieves item data from tbl_In or tbl_Out.
+
+Displays item warranty expiry date and validity status (Expired / Active).
+
+
+
+2. Warranty Check
+
+System compares current date with WarrantyExpiry value.
+
+If WarrantyExpiry < CurrentDate, set status = Expired and make Dispose button visible.
+
+Else, hide the Dispose button and display message: “Warranty still active until [date].”
+
+
+
+3. Dispose Action
+
+When user clicks Dispose, system performs the following:
+
+Inserts a record into tbl_Dispose with item details and timestamp.
+
+Updates item status in tbl_In or tbl_Out to Disposed.
+
+Logs user, date, and time in tbl_TransactionLog.
+
+
+Confirmation message displayed: “Item successfully disposed.”
+
+
+
+4. Validation and Error Handling
+
+Control No must exist in the system.
+
+An item already disposed cannot be processed again.
+
+Warranty field cannot be edited manually.
+
+
+
+
+
+---
+
+4. Output Specifications
+
+Output / Result	Description
+
+Auto-filled Warranty Date	Shows the warranty expiration date retrieved from the database.
+Dispose Button Visibility	Visible only when the warranty is expired. Hidden if still active.
+Success Message	“Item successfully disposed.”
+Error Message	“Invalid Control No.” or “Item already disposed.”
+Database Update	- Insert record into tbl_Dispose with fields:<br> ControlNo, WarrantyExpiry, DisposedBy, DateDisposed.<br>- Update tbl_In.Status = 'Disposed' or tbl_Out.Status = 'Disposed'.
+Audit Log	Insert transaction details into tbl_TransactionLog (User, ControlNo, ActionType, DateTime).
+
+
+
+---
+
+5. Table References
+
+Table Name	Purpose
+
+tbl_In	Reference for original item data and warranty expiry.
+tbl_Out	Used if the item was previously deployed; contains last known location.
+tbl_Dispose	Stores disposal records for audit and tracking.
+tbl_TransactionLog	Keeps system logs of all user actions.
+
+
+
+---
+
+6. Business Rules / Conditions
+
+Only items with expired warranties can be disposed.
+
+Dispose button remains hidden until the system detects expiry.
+
+Once disposed, item cannot be redeployed or transferred unless re-added through In (Receiving).
+
+The system must automatically timestamp the disposal record.
+
+All disposal transactions must be tied to a logged-in user.
+
+
+
+---
+
+7. Example Scenario
+
+Action	System Response
+
+User scans Control No SW-1025-001.	System retrieves warranty expiry 2022-10-20.
+Current date = 2025-10-27 (expired).	Dispose button becomes visible.
+User clicks Dispose.	Record added to tbl_Dispose, item marked as Disposed, message shown: “Item successfully disposed.”
+
+
+
+---
+
+Would you like me to extend this specification with a Replacement workflow (for cases where disposed items are replaced with new ones under the same Control No prefix)?
+It can include how the new item links to the old one for traceability (like ReplacedFrom field).
