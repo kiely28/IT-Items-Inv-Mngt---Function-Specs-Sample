@@ -387,3 +387,136 @@ Output	Display table with item details, QR Code, and action icons	System	DataTab
 ---
 
 Would you like me to include the “Print” function specification next — describing how the QR codes and item list are exported to PDF or print view (including layout and columns)?
+
+
+---  
+
+
+Perfect 👍 Based on your Out / Deployment screen and process flow, here’s a clear and complete Function Specification for both Input and Output sections — consistent with your In/Receiving module specs style.
+
+
+---
+
+🧾 FUNCTION SPECIFICATION
+
+Module: Out (Deployment)
+
+Page: Transaction / Out
+
+File: Out.aspx
+
+
+---
+
+1. Module Description
+
+The Out (Deployment) module handles the issuance or deployment of IT items from inventory to specific locations or users.
+When the user scans a Control No, the system automatically retrieves all related details such as Category, Brand/Model, Warranty Expiration, and Quantity/Length from the database.
+The user then scans or selects the Location of Deployment, and the record is saved as an outgoing transaction.
+
+
+---
+
+2. Input Specifications
+
+Field Name	Description / Source	User Action	Logic / Validation
+
+Control No*	Unique identifier auto-generated during the “In” process. Used to retrieve item info.	Scanned by user	- System validates if Control No exists in tbl_In.<br>- If valid, fetches related data: Category, Brand, Warranty, Quantity/Length, UOM.<br>- If invalid, show error: “Control No not found or already deployed.”
+Quantity/Length*	Number or length of item issued.	Auto-filled or editable (depends on UOM)	- If UOM = pc, set default = 1 (non-editable).<br>- If UOM = m, user may input actual length deployed.<br>- Validation: must not exceed available stock.
+Warranty*	Warranty expiration date.	Auto-filled	- Retrieved automatically from the item record in tbl_In.<br>- Not editable by user.<br>- If expired, show a warning: “Warranty expired on [date].”
+Location of Deployment*	Destination where the item will be deployed.	Scanned or manually entered by user	- Must not be blank.<br>- Valid location codes are checked against tbl_Location.<br>- If invalid, show error message.
+
+
+
+---
+
+3. Processing Logic
+
+1. Scan Control No
+
+System queries tbl_In for item details where ControlNo = scanned value.
+
+Retrieve and display: CategoryCode, BrandModel, Warranty, Quantity/Length, and UOM.
+
+Check if Control No has already been used in tbl_Out. If yes, block further processing.
+
+
+
+2. Auto-fill Warranty
+
+The Warranty field auto-populates based on the value saved during the In transaction (tbl_In.WarrantyExpiry).
+
+
+
+3. Quantity Logic
+
+If UOM = pc, set Quantity = 1 and disable editing.
+
+If UOM = m, allow the user to input the deployed length.
+
+
+
+4. Location Validation
+
+Validate if the entered or scanned location exists in tbl_Location.
+
+
+
+5. Save (Deploy)
+
+Upon clicking Deploy, system inserts data into tbl_Out with deployment details.
+
+Update the item’s Status to Deployed in tbl_In.
+
+Reduce or zero-out stock if partial quantity is deployed (for cable, etc.).
+
+
+
+
+
+---
+
+4. Output Specifications
+
+Output / Result	Description
+
+Success Message	“Item successfully deployed to [Location].”
+Error Message	Display if Control No not found, invalid location, or insufficient stock.
+Database Update	- New record inserted into tbl_Out:<br>  ControlNo, Quantity, Warranty, LocationDeployed, DateDeployed, UserDeployed.<br>- Update tbl_In.Status = 'Deployed'.
+Transaction Log	System logs transaction details for audit trail (user, date, time, Control No).
+Report View / List Page	The deployed item appears in the Out List page showing: Category, Brand, Control No, Quantity, Warranty, and Deployment Location.
+
+
+
+---
+
+5. Table References
+
+Table Name	Purpose
+
+tbl_In	Stores received items and their details. Used to retrieve info during deployment.
+tbl_Out	Stores deployed item records.
+tbl_Category	Used to determine UOM and warranty period.
+tbl_Location	Reference table for valid deployment locations.
+
+
+
+---
+
+6. Business Rules / Conditions
+
+Each Control No can only be deployed once unless returned or transferred back to inventory.
+
+Warranty should not be modified during deployment.
+
+If item has expired warranty, the system should still allow deployment but issue a warning message.
+
+UOM = pc always implies Quantity = 1.
+
+System should record DeployedBy (current user) and DateDeployed automatically.
+
+
+
+---
+
+Would you like me to include a sample database flow diagram or ERD link (showing tbl_In → tbl_Out → tbl_Category relationships)? That will make this function spec visually complete for your documentation.
