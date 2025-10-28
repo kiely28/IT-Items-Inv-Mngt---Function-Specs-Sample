@@ -157,3 +157,174 @@ When the user enters a valid Control No and clicks Repaired, the system updates 
 
 Would you like me to include a sample SQL stored procedure and ASP.NET code-behind logic for the “Repaired” button (e.g., btnRepaired_Click event)?
 That will make this specification ready for actual implementation.
+
+
+---
+
+
+Excellent — this is a clear workflow enhancement where the Dispose/Replacement (Repaired) form dynamically reacts based on warranty validity.
+Below is your complete and consistent Function Specification for the Repaired function in the Dispose/Replacement module.
+
+
+---
+
+🧾 FUNCTION SPECIFICATION
+
+Module: Dispose / Replacement (Repaired)
+
+Page: Transaction / DisposeReplacement
+
+File: DisposeReplacement_Repaired.aspx
+
+
+---
+
+1. Module Description
+
+The Dispose/Replacement (Repaired) module manages items that are still within warranty but have become defective and require repair or replacement.
+When a user scans the Control No, the system automatically retrieves the item’s details (including Warranty Expiration Date) and determines if the item is eligible for repair or replacement.
+If the warranty is still valid, the Repaired and Dispose buttons become visible for further action.
+
+
+---
+
+2. Input Specifications
+
+Field Name	Description / Source	User Action	Logic / Validation
+
+Control No*	Unique item identifier from the In module.	Scanned by user	- System checks if Control No exists in tbl_In.<br>- If found, retrieves item details and warranty expiry.<br>- If not found → show error: “Invalid Control No or item not found.”
+Warranty*	Warranty expiration date.	Auto-filled	- Retrieved from tbl_In.WarrantyExpiry.<br>- If current date ≤ warranty date → warranty active.<br>- If current date > warranty date → warranty expired (hide Repaired button).
+
+
+
+---
+
+3. Processing Logic
+
+1. Scan Control No
+
+User scans or inputs the Control No.
+
+System retrieves related item data (Category, Brand/Model, WarrantyExpiry, and Status) from tbl_In or tbl_Out.
+
+Auto-populates the Warranty field.
+
+
+
+2. Warranty Validation
+
+System compares WarrantyExpiry with the current date.
+
+If Warranty Active:
+
+Show Repaired and Dispose buttons.
+
+Message: “Item is still under warranty until [date].”
+
+
+If Warranty Expired:
+
+Hide Repaired button (only Dispose visible).
+
+Message: “Warranty expired on [date]. Only disposal allowed.”
+
+
+
+
+3. Repaired Action
+When the Repaired button is clicked:
+
+System inserts a record into tbl_Repair containing repair details.
+
+Updates item status in tbl_In to Under Repair or Repaired.
+
+Logs transaction in tbl_TransactionLog.
+
+Displays confirmation: “Item marked as repaired successfully.”
+
+
+
+4. Dispose Action
+
+When Dispose is clicked, the same logic as the Dispose module applies:
+
+Insert record into tbl_Dispose.
+
+Update item status to Disposed.
+
+Log action and timestamp.
+
+
+
+
+5. Error Handling
+
+If Control No not found → display error.
+
+If item already disposed or repaired → block further processing.
+
+
+
+
+
+---
+
+4. Output Specifications
+
+Output / Result	Description
+
+Auto-filled Warranty Date	Displayed from database after scanning Control No.
+Button Visibility	- If Warranty Active → show Repaired and Dispose buttons.<br>- If Warranty Expired → show only Dispose button.
+Success Message (Repaired)	“Item marked as repaired successfully.”
+Success Message (Dispose)	“Item successfully disposed.”
+Error Message	“Invalid Control No.” / “Item already processed.”
+Database Updates	- For Repaired: Insert into tbl_Repair → update tbl_In.Status = 'Repaired'.<br>- For Dispose: Insert into tbl_Dispose → update tbl_In.Status = 'Disposed'.
+Audit Log	Insert record into tbl_TransactionLog with Control No, Action (Repaired/Disposed), User, and Timestamp.
+
+
+
+---
+
+5. Table References
+
+Table Name	Purpose
+
+tbl_In	Stores master item records and warranty information.
+tbl_Repair	Stores details of items marked as repaired.
+tbl_Dispose	Stores records of disposed items.
+tbl_TransactionLog	Records all user actions for audit trail.
+
+
+
+---
+
+6. Business Rules / Conditions
+
+Repaired button is only available if warranty is active.
+
+Dispose button is always available (if item is beyond repair or expired).
+
+Once repaired or disposed, item cannot be processed again unless re-entered under a new Control No.
+
+Warranty information cannot be edited manually.
+
+All actions (scan, repair, dispose) must be logged with user and timestamp.
+
+
+
+---
+
+7. Example Scenario
+
+Action	System Response
+
+User scans Control No SW-1025-001.	System retrieves warranty expiry 2026-01-10.
+Warranty still active.	Repaired and Dispose buttons are visible.
+User clicks Repaired.	System updates status to “Repaired,” logs transaction, and shows message “Item marked as repaired successfully.”
+
+
+
+---
+
+Would you like me to include the Replacement version next (where an expired or defective item is swapped with a new Control No linked to the old one)?
+That’s usually the third flow in this module, following Dispose and Repaired.
