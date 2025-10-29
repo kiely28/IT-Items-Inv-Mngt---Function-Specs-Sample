@@ -1,0 +1,539 @@
+
+Sub RunAllMacros()
+    Call MacroA
+    Call MacroB
+    Call MacroC
+    Call MacroD
+    Call MacroE
+    Call MacroF
+    Call MacroG
+    Call MacroH
+    
+End Sub
+
+Sub MacroA()
+    MsgBox "ƒ}ƒNƒA‚ðŽÀs’†"
+'•Ï”‚ð—pˆÓ‚µ‚Ü‚·
+    Dim srcWb As Workbook
+    Dim srcWs As Worksheet
+    Dim destWs As Worksheet
+    Dim srcPath As String
+    Dim srcLastRow As Long
+    Dim destLastRow As Long
+    Dim i As Long, j As Long
+    Dim ¤•i–¼ As String
+
+    ' “]‹LŒ³ƒuƒbƒN‚ÌƒpƒX‚ð‘I‘ð
+    With Application.FileDialog(msoFileDialogFilePicker)
+
+        .Title = "“]‹LŒ³‚ÌƒuƒbƒN‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+        .Filters.Add "Excelƒtƒ@ƒCƒ‹", "*.xls; *.xlsx; *.xlsm", 1
+        If .Show <> -1 Then
+            MsgBox "ƒLƒƒƒ“ƒZƒ‹‚³‚ê‚Ü‚µ‚½B"
+            Exit Sub
+        End If
+        srcPath = .SelectedItems(1)
+    End With
+
+    ' “]‹LŒ³ƒuƒbƒN‚ðŠJ‚­
+    Set srcWb = Workbooks.Open(srcPath)
+    Set srcWs = srcWb.Sheets("Row Data")
+
+    ' “]‹LæƒV[ƒgi‚±‚ÌƒuƒbƒN‚ÌSheet1j
+    Set destWs = ThisWorkbook.Sheets("Sheet1")
+
+    ' ÅIsŽæ“¾
+    srcLastRow = srcWs.Cells(srcWs.Rows.Count, "I").End(xlUp).Row
+    destLastRow = destWs.Cells(destWs.Rows.Count, "A").End(xlUp).Row
+
+    ' “]‹LŒ³‚ÌB—ñ‚ðƒ‹[ƒvi‹ó—“‚ðœ‚­j
+    For j = 1 To srcLastRow
+        ¤•i–¼ = Trim(srcWs.Cells(j, "E").Value)
+        If ¤•i–¼ <> "" Then
+            ' “]‹Læ‚ÌA—ñ‚ðƒ‹[ƒv‚µ‚Äˆê’v‚ð’T‚·
+            For i = 14 To destLastRow
+                If Trim(destWs.Cells(i, "AI").Value) = ¤•i–¼ Then
+                    ' ˆê’v‚µ‚½‚çC—ñ‚Ì’l‚ðD—ñ‚É“]‹L
+                    destWs.Cells(i, "AK").Value = srcWs.Cells(j, "X").Value
+                End If
+            Next i
+        End If
+    Next j
+
+    ' “]‹LŒ³ƒuƒbƒN‚ð•Â‚¶‚éi•Û‘¶‚¹‚¸j
+    'srcWb.Close SaveChanges:=False
+End Sub
+
+Sub MacroB()
+    MsgBox "ƒ}ƒNƒB‚ðŽÀs’†"
+'•Ï”‚ð—pˆÓ‚µ‚Ü‚·
+    Dim srcWb As Workbook
+    Dim srcWs As Worksheet
+    Dim destWs As Worksheet
+    Dim srcPath As String
+    Dim srcLastRow As Long
+    Dim destLastRow As Long
+    Dim i As Long, j As Long
+    Dim ¤•i–¼ As String
+
+    ' “]‹LŒ³ƒuƒbƒN‚ÌƒpƒX‚ð‘I‘ð
+    With Application.FileDialog(msoFileDialogFilePicker)
+
+        .Title = "“]‹LŒ³‚ÌƒuƒbƒN‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+        .Filters.Add "Excelƒtƒ@ƒCƒ‹", "*.xls; *.xlsx; *.xlsm", 1
+        If .Show <> -1 Then
+            MsgBox "ƒLƒƒƒ“ƒZƒ‹‚³‚ê‚Ü‚µ‚½B"
+            Exit Sub
+        End If
+        srcPath = .SelectedItems(1)
+    End With
+
+    ' “]‹LŒ³ƒuƒbƒN‚ðŠJ‚­
+    Set srcWb = Workbooks.Open(srcPath)
+    Set srcWs = srcWb.Sheets("Row Data")
+
+    ' “]‹LæƒV[ƒgi‚±‚ÌƒuƒbƒN‚ÌSheet1j
+    Set destWs = ThisWorkbook.Sheets("Sheet1")
+
+    ' ÅIsŽæ“¾
+    srcLastRow = srcWs.Cells(srcWs.Rows.Count, "I").End(xlUp).Row
+    destLastRow = destWs.Cells(destWs.Rows.Count, "A").End(xlUp).Row
+
+    ' “]‹LŒ³‚ÌB—ñ‚ðƒ‹[ƒvi‹ó—“‚ðœ‚­j
+    For j = 1 To srcLastRow
+        ¤•i–¼ = Trim(srcWs.Cells(j, "G").Value)
+        If ¤•i–¼ <> "" Then
+            ' “]‹Læ‚ÌA—ñ‚ðƒ‹[ƒv‚µ‚Äˆê’v‚ð’T‚·
+            For i = 14 To destLastRow
+                If Trim(destWs.Cells(i, "AJ").Value) = ¤•i–¼ Then
+                    ' ˆê’v‚µ‚½‚çC—ñ‚Ì’l‚ðD—ñ‚É“]‹L
+                    destWs.Cells(i, "AK").Value = srcWs.Cells(j, "X").Value
+                End If
+            Next i
+        End If
+    Next j
+
+    ' “]‹LŒ³ƒuƒbƒN‚ð•Â‚¶‚éi•Û‘¶‚¹‚¸j
+    srcWb.Close SaveChanges:=False
+End Sub
+
+Sub MacroC()
+'•Ï”‚ð—pˆÓ‚µ‚Ü‚·
+    Dim WbTenkiMoto As Workbook
+    Dim WsTenkiMoto As Worksheet
+    Dim WsTenkiSaki As Worksheet
+    Dim SearchValue As String
+    Dim FindRng As Range
+    Dim i As Long, lastRow As Long
+    
+    Dim SourceValueS As String
+    Dim SourceValueT As String
+    Dim S_Before As String, S_After As String
+    Dim T_Before As String, T_After As String
+    Dim CommaPosS As Long, CommaPosT As Long
+
+    '“]‹LŒ³‚ÌƒuƒbƒN‚ðŠJ‚«‚Ü‚·(‰º‹L‚Ìƒtƒ‹ƒpƒX‚Í“]‹LŒ³‚Ìƒf[ƒ^‚ª‚ ‚éêŠ‚ðŽw’è‚µ‚Ä‚­‚¾‚³‚¢)
+    'Set WbTenkiMoto = Workbooks.Open("C:\Users\5011090\Desktop\‰ü‘PŠˆ“®\ƒgƒŒ[ƒj[‰ü‘PŠˆ“®ˆÄ\ŒŸØ—pBlumeƒf[ƒ^\Trial_Blume.xlsx")
+    Set WbTenkiMoto = Workbooks.Open("D:\Trial_Blume.xlsx") ' For testing purposes only
+
+    '“]‹LŒ³‚Æ“]‹Læ‚ÌƒV[ƒg‚ðŽw’è‚µ‚Ü‚·
+    Set WsTenkiMoto = WbTenkiMoto.Worksheets("Row Data")
+    Set WsTenkiSaki = ThisWorkbook.Worksheets("Sheet1")
+
+    '“]‹Læ‚ÌÅIs‚ðŽæ“¾‚µ‚Ü‚·
+    lastRow = WsTenkiSaki.Cells(Rows.Count, "A").End(xlUp).Row
+
+    '“]‹LæƒV[ƒg‚Ì2s–Ú‚©‚çÅIs‚Ü‚Å‚ðƒ‹[ƒv‚µ‚Ü‚·
+    For i = 14 To lastRow
+        
+        'ŒŸõ‚·‚é•¶Žš‚ðŽw’è‚µ‚Ü‚·
+        SearchValue = Trim(WsTenkiSaki.Cells(i, "AI").Value)
+        
+        If SearchValue <> "" Then ' Skip if the column AI is empty
+        
+            '“]‹LŒ³ƒf[ƒ^‚ÌƒV[ƒg‚ÌB—ñ‚©‚ç“¯‚¶¤•i–¼‚ðŒŸõ‚µ‚Ü‚·(LookAt:=xlWhole = Š®‘Sˆê’v)
+            Set FindRng = WsTenkiMoto.Columns("E").Find(SearchValue, LookAt:=xlWhole)
+            
+            '“]‹LŒ³ƒf[ƒ^‚ÌB—ñ‚©‚çðŒ‚Éˆê’v‚·‚é’l‚ªŒ©‚Â‚©‚Á‚½ê‡A‰¿Ši‚ð“]‹L‚µ‚Ü‚·iŒ©‚Â‚©‚ç‚È‚©‚Á‚½ê‡‚ÍA‰¿Ši‚ÌƒZƒ‹‚ð‰©F‚Å“h‚è‚Â‚Ô‚µ‚Ü‚·j
+            If Not FindRng Is Nothing Then
+            
+                ' Get values from Trial_Blume.xlsx columns S and T
+                SourceValueS = Trim(WsTenkiMoto.Cells(FindRng.Row, "S").Value)
+                SourceValueT = Trim(WsTenkiMoto.Cells(FindRng.Row, "T").Value)
+                
+                ' Find commas in both columns
+                CommaPosS = InStr(1, SourceValueS, ",")
+                CommaPosT = InStr(1, SourceValueT, ",")
+                
+                ' Check if column S contains a comma for the Vessel pattern.
+                If CommaPosS = 0 Then
+                    ' No comma in S
+                    WsTenkiSaki.Cells(i, "AM").Value = SourceValueS & " " & SourceValueT
+                    WsTenkiSaki.Cells(i, "AN").Value = "DIRECT"
+                
+                Else
+                    ' Has comma in S (and likely in T)
+                    
+                    ' Split values before/after comma in S
+                    S_Before = Trim(Left(SourceValueS, CommaPosS - 1))
+                    S_After = Trim(Mid(SourceValueS, CommaPosS + 1))
+                    
+                    ' Split values before/after comma in T
+                    If CommaPosT > 0 Then
+                        T_Before = Trim(Left(SourceValueT, CommaPosT - 1))
+                        T_After = Trim(Mid(SourceValueT, CommaPosT + 1))
+                    Else
+                        ' If T has no comma, use same T for both
+                        T_Before = SourceValueT
+                        T_After = SourceValueT
+                    End If
+                    
+                    ' Combine the pairs
+                    WsTenkiSaki.Cells(i, "AM").Value = S_Before & " " & T_Before
+                    WsTenkiSaki.Cells(i, "AN").Value = S_After & " " & T_After
+                End If
+            
+            Else
+                WsTenkiSaki.Cells(i, "AM").Interior.Color = 0  'Œ©‚Â‚©‚ç‚È‚©‚Á‚½ê‡
+            End If
+        End If
+        
+    Next i
+
+    'ƒŠƒ\[ƒX‚ðŠJ•ú‚µ‚Ü‚·
+    Set FindRng = Nothing
+    Set WsTenkiMoto = Nothing
+    Set WsTenkiSaki = Nothing
+    Set WbTenkiMoto = Nothing
+
+    ' Close workbook
+    'WbTenkiMoto.Close SaveChanges:=False
+
+End Sub
+
+Sub MacroD()
+'•Ï”‚ð—pˆÓ‚µ‚Ü‚·
+    Dim WbTenkiMoto As Workbook
+    Dim WsTenkiMoto As Worksheet
+    Dim WsTenkiSaki As Worksheet
+    Dim SearchValue As String
+    Dim FindRng As Range
+    Dim i As Long, lastRow As Long
+    
+    Dim SourceValueS As String
+    Dim SourceValueT As String
+    Dim S_Before As String, S_After As String
+    Dim T_Before As String, T_After As String
+    Dim CommaPosS As Long, CommaPosT As Long
+
+    '“]‹LŒ³‚ÌƒuƒbƒN‚ðŠJ‚«‚Ü‚·(‰º‹L‚Ìƒtƒ‹ƒpƒX‚Í“]‹LŒ³‚Ìƒf[ƒ^‚ª‚ ‚éêŠ‚ðŽw’è‚µ‚Ä‚­‚¾‚³‚¢)
+    Set WbTenkiMoto = Workbooks.Open("C:\Users\5011090\Desktop\‰ü‘PŠˆ“®\ƒgƒŒ[ƒj[‰ü‘PŠˆ“®ˆÄ\ŒŸØ—pBlumeƒf[ƒ^\Trial_Blume.xlsx")
+    'Set WbTenkiMoto = Workbooks.Open("D:\Trial_Blume.xlsx") ' For testing purposes only
+
+    '“]‹LŒ³‚Æ“]‹Læ‚ÌƒV[ƒg‚ðŽw’è‚µ‚Ü‚·
+    Set WsTenkiMoto = WbTenkiMoto.Worksheets("Row Data")
+    Set WsTenkiSaki = ThisWorkbook.Worksheets("Sheet1")
+
+    '“]‹Læ‚ÌÅIs‚ðŽæ“¾‚µ‚Ü‚·
+    lastRow = WsTenkiSaki.Cells(Rows.Count, "A").End(xlUp).Row
+
+    '“]‹LæƒV[ƒg‚Ì2s–Ú‚©‚çÅIs‚Ü‚Å‚ðƒ‹[ƒv‚µ‚Ü‚·
+    For i = 14 To lastRow
+        
+        'ŒŸõ‚·‚é•¶Žš‚ðŽw’è‚µ‚Ü‚·
+        SearchValue = Trim(WsTenkiSaki.Cells(i, "AJ").Value)
+        
+        If SearchValue <> "" Then ' Skip if the column AI is empty
+        
+            '“]‹LŒ³ƒf[ƒ^‚ÌƒV[ƒg‚ÌB—ñ‚©‚ç“¯‚¶¤•i–¼‚ðŒŸõ‚µ‚Ü‚·(LookAt:=xlWhole = Š®‘Sˆê’v)
+            Set FindRng = WsTenkiMoto.Columns("G").Find(SearchValue, LookAt:=xlWhole)
+            
+            '“]‹LŒ³ƒf[ƒ^‚ÌB—ñ‚©‚çðŒ‚Éˆê’v‚·‚é’l‚ªŒ©‚Â‚©‚Á‚½ê‡A‰¿Ši‚ð“]‹L‚µ‚Ü‚·iŒ©‚Â‚©‚ç‚È‚©‚Á‚½ê‡‚ÍA‰¿Ši‚ÌƒZƒ‹‚ð‰©F‚Å“h‚è‚Â‚Ô‚µ‚Ü‚·j
+            If Not FindRng Is Nothing Then
+            
+                ' Get values from Trial_Blume.xlsx columns S and T
+                SourceValueS = Trim(WsTenkiMoto.Cells(FindRng.Row, "S").Value)
+                SourceValueT = Trim(WsTenkiMoto.Cells(FindRng.Row, "T").Value)
+                
+                ' Find commas in both columns
+                CommaPosS = InStr(1, SourceValueS, ",")
+                CommaPosT = InStr(1, SourceValueT, ",")
+                
+                ' Check if column S contains a comma for the Vessel pattern.
+                If CommaPosS = 0 Then
+                    ' No comma in S
+                    WsTenkiSaki.Cells(i, "AM").Value = SourceValueS & " " & SourceValueT
+                    WsTenkiSaki.Cells(i, "AN").Value = "DIRECT"
+                
+                Else
+                    ' Has comma in S (and likely in T)
+                    
+                    ' Split values before/after comma in S
+                    S_Before = Trim(Left(SourceValueS, CommaPosS - 1))
+                    S_After = Trim(Mid(SourceValueS, CommaPosS + 1))
+                    
+                    ' Split values before/after comma in T
+                    If CommaPosT > 0 Then
+                        T_Before = Trim(Left(SourceValueT, CommaPosT - 1))
+                        T_After = Trim(Mid(SourceValueT, CommaPosT + 1))
+                    Else
+                        ' If T has no comma, use same T for both
+                        T_Before = SourceValueT
+                        T_After = SourceValueT
+                    End If
+                    
+                    ' Combine the pairs
+                    WsTenkiSaki.Cells(i, "AM").Value = S_Before & " " & T_Before
+                    WsTenkiSaki.Cells(i, "AN").Value = S_After & " " & T_After
+                End If
+            
+            Else
+                WsTenkiSaki.Cells(i, "AM").Interior.Color = 0  'Œ©‚Â‚©‚ç‚È‚©‚Á‚½ê‡
+            End If
+        End If
+        
+    Next i
+
+    'ƒŠƒ\[ƒX‚ðŠJ•ú‚µ‚Ü‚·
+    Set FindRng = Nothing
+    Set WsTenkiMoto = Nothing
+    Set WsTenkiSaki = Nothing
+    Set WbTenkiMoto = Nothing
+
+    ' Close workbook
+    'WbTenkiMoto.Close SaveChanges:=False
+
+End Sub
+Sub MacroE()
+    MsgBox "ƒ}ƒNƒE‚ðŽÀs’†"
+'•Ï”‚ð—pˆÓ‚µ‚Ü‚·
+    Dim srcWb As Workbook
+    Dim srcWs As Worksheet
+    Dim destWs As Worksheet
+    Dim srcPath As String
+    Dim srcLastRow As Long
+    Dim destLastRow As Long
+    Dim i As Long, j As Long
+    Dim ¤•i–¼ As String
+
+    ' “]‹LŒ³ƒuƒbƒN‚ÌƒpƒX‚ð‘I‘ð
+    With Application.FileDialog(msoFileDialogFilePicker)
+
+        .Title = "“]‹LŒ³‚ÌƒuƒbƒN‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+        .Filters.Add "Excelƒtƒ@ƒCƒ‹", "*.xls; *.xlsx; *.xlsm", 1
+        If .Show <> -1 Then
+            MsgBox "ƒLƒƒƒ“ƒZƒ‹‚³‚ê‚Ü‚µ‚½B"
+            Exit Sub
+        End If
+        srcPath = .SelectedItems(1)
+    End With
+
+    ' “]‹LŒ³ƒuƒbƒN‚ðŠJ‚­
+    Set srcWb = Workbooks.Open(srcPath)
+    Set srcWs = srcWb.Sheets("Row Data")
+
+    ' “]‹LæƒV[ƒgi‚±‚ÌƒuƒbƒN‚ÌSheet1j
+    Set destWs = ThisWorkbook.Sheets("Sheet1")
+
+    ' ÅIsŽæ“¾
+    srcLastRow = srcWs.Cells(srcWs.Rows.Count, "I").End(xlUp).Row
+    destLastRow = destWs.Cells(destWs.Rows.Count, "A").End(xlUp).Row
+
+    ' “]‹LŒ³‚ÌB—ñ‚ðƒ‹[ƒvi‹ó—“‚ðœ‚­j
+    For j = 1 To srcLastRow
+        ¤•i–¼ = Trim(srcWs.Cells(j, "G").Value)
+        If ¤•i–¼ <> "" Then
+            ' “]‹Læ‚ÌA—ñ‚ðƒ‹[ƒv‚µ‚Äˆê’v‚ð’T‚·
+            For i = 14 To destLastRow
+                If Trim(destWs.Cells(i, "AJ").Value) = ¤•i–¼ Then
+                    ' ˆê’v‚µ‚½‚çC—ñ‚Ì’l‚ðD—ñ‚É“]‹L
+                    destWs.Cells(i, "AN").Value = srcWs.Cells(j, "S").Value
+                End If
+            Next i
+        End If
+    Next j
+
+    ' “]‹LŒ³ƒuƒbƒN‚ð•Â‚¶‚éi•Û‘¶‚¹‚¸j
+    srcWb.Close SaveChanges:=False
+End Sub
+
+Sub MacroF()
+    MsgBox "ƒ}ƒNƒF‚ðŽÀs’†"
+'•Ï”‚ð—pˆÓ‚µ‚Ü‚·
+    Dim srcWb As Workbook
+    Dim srcWs As Worksheet
+    Dim destWs As Worksheet
+    Dim srcPath As String
+    Dim srcLastRow As Long
+    Dim destLastRow As Long
+    Dim i As Long, j As Long
+    Dim ¤•i–¼ As String
+
+    ' “]‹LŒ³ƒuƒbƒN‚ÌƒpƒX‚ð‘I‘ð
+    With Application.FileDialog(msoFileDialogFilePicker)
+
+        .Title = "“]‹LŒ³‚ÌƒuƒbƒN‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+        .Filters.Add "Excelƒtƒ@ƒCƒ‹", "*.xls; *.xlsx; *.xlsm", 1
+        If .Show <> -1 Then
+            MsgBox "ƒLƒƒƒ“ƒZƒ‹‚³‚ê‚Ü‚µ‚½B"
+            Exit Sub
+        End If
+        srcPath = .SelectedItems(1)
+    End With
+
+    ' “]‹LŒ³ƒuƒbƒN‚ðŠJ‚­
+    Set srcWb = Workbooks.Open(srcPath)
+    Set srcWs = srcWb.Sheets("Row Data")
+
+    ' “]‹LæƒV[ƒgi‚±‚ÌƒuƒbƒN‚ÌSheet1j
+    Set destWs = ThisWorkbook.Sheets("Sheet1")
+
+    ' ÅIsŽæ“¾
+    srcLastRow = srcWs.Cells(srcWs.Rows.Count, "I").End(xlUp).Row
+    destLastRow = destWs.Cells(destWs.Rows.Count, "A").End(xlUp).Row
+
+    ' “]‹LŒ³‚ÌB—ñ‚ðƒ‹[ƒvi‹ó—“‚ðœ‚­j
+    For j = 1 To srcLastRow
+        ¤•i–¼ = Trim(srcWs.Cells(j, "E").Value)
+        If ¤•i–¼ <> "" Then
+            ' “]‹Læ‚ÌA—ñ‚ðƒ‹[ƒv‚µ‚Äˆê’v‚ð’T‚·
+            For i = 14 To destLastRow
+                If Trim(destWs.Cells(i, "AI").Value) = ¤•i–¼ Then
+                    ' ˆê’v‚µ‚½‚çC—ñ‚Ì’l‚ðD—ñ‚É“]‹L
+                    destWs.Cells(i, "AQ").Value = srcWs.Cells(j, "AC").Value
+                End If
+            Next i
+        End If
+    Next j
+
+    ' “]‹LŒ³ƒuƒbƒN‚ð•Â‚¶‚éi•Û‘¶‚¹‚¸j
+    srcWb.Close SaveChanges:=False
+End Sub
+
+    
+Sub MacroG()
+    MsgBox "ƒ}ƒNƒG‚ðŽÀs’†"
+'•Ï”‚ð—pˆÓ‚µ‚Ü‚·
+    Dim srcWb As Workbook
+    Dim srcWs As Worksheet
+    Dim destWs As Worksheet
+    Dim srcPath As String
+    Dim srcLastRow As Long
+    Dim destLastRow As Long
+    Dim i As Long, j As Long
+    Dim ¤•i–¼ As String
+
+    ' “]‹LŒ³ƒuƒbƒN‚ÌƒpƒX‚ð‘I‘ð
+    With Application.FileDialog(msoFileDialogFilePicker)
+
+        .Title = "“]‹LŒ³‚ÌƒuƒbƒN‚ð‘I‘ð‚µ‚Ä‚­‚¾‚³‚¢"
+        .Filters.Add "Excelƒtƒ@ƒCƒ‹", "*.xls; *.xlsx; *.xlsm", 1
+        If .Show <> -1 Then
+            MsgBox "ƒLƒƒƒ“ƒZƒ‹‚³‚ê‚Ü‚µ‚½B"
+            Exit Sub
+        End If
+        srcPath = .SelectedItems(1)
+    End With
+
+    ' “]‹LŒ³ƒuƒbƒN‚ðŠJ‚­
+    Set srcWb = Workbooks.Open(srcPath)
+    Set srcWs = srcWb.Sheets("Row Data")
+
+    ' “]‹LæƒV[ƒgi‚±‚ÌƒuƒbƒN‚ÌSheet1j
+    Set destWs = ThisWorkbook.Sheets("Sheet1")
+
+    ' ÅIsŽæ“¾
+    srcLastRow = srcWs.Cells(srcWs.Rows.Count, "I").End(xlUp).Row
+    destLastRow = destWs.Cells(destWs.Rows.Count, "A").End(xlUp).Row
+
+    ' “]‹LŒ³‚ÌB—ñ‚ðƒ‹[ƒvi‹ó—“‚ðœ‚­j
+    For j = 1 To srcLastRow
+        ¤•i–¼ = Trim(srcWs.Cells(j, "G").Value)
+        If ¤•i–¼ <> "" Then
+            ' “]‹Læ‚ÌA—ñ‚ðƒ‹[ƒv‚µ‚Äˆê’v‚ð’T‚·
+            For i = 14 To destLastRow
+                If Trim(destWs.Cells(i, "AJ").Value) = ¤•i–¼ Then
+                    ' ˆê’v‚µ‚½‚çC—ñ‚Ì’l‚ðD—ñ‚É“]‹L
+                    destWs.Cells(i, "AQ").Value = srcWs.Cells(j, "AC").Value
+                End If
+            Next i
+        End If
+    Next j
+
+    ' “]‹LŒ³ƒuƒbƒN‚ð•Â‚¶‚éi•Û‘¶‚¹‚¸j
+    srcWb.Close SaveChanges:=False
+End Sub
+
+Sub MacroH()
+    MsgBox "ƒ}ƒNƒH‚ðŽÀs’†"
+'•Ï”‚ð—pˆÓ‚µ‚Ü‚·
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim akDate As Date
+    Dim kDate As Date
+    Dim kWeekEnd As Date
+    Dim nextWeekWednesday As Date
+
+    Set ws = ThisWorkbook.Sheets("Sheet1") ' ƒV[ƒg–¼‚ð“K‹X•ÏX‚µ‚Ä‚­‚¾‚³‚¢
+    lastRow = ws.Cells(ws.Rows.Count, "AK").End(xlUp).Row
+    For i = 14 To lastRow ' ƒwƒbƒ_[‚ª‚ ‚éê‡‚Í2‚©‚çŠJŽn
+        If IsDate(ws.Cells(i, "AK").Value) And IsDate(ws.Cells(i, "K").Value) Then
+        'If IsDate(ws.Cells(i, "K").Value) And IsDate(ws.Cells(i, "AK").Value) Then
+            akDate = ws.Cells(i, "AK").Value
+            kDate = ws.Cells(i, "K").Value
+
+            ' K—ñ‚ÌT‚ÌÅI“úi“ú—j“új‚ðŒvŽZ
+            kWeekEnd = kDate + 6
+            ' AK—ñ‚ÌT‚Ì—‚T‚Ì…—j“ú‚ðŒvŽZ
+            nextWeekWednesday = akDate - Weekday(akDate, vbSunday) + 7 + 4
+
+            If akDate > kWeekEnd And akDate >= nextWeekWednesday Then
+                ws.Cells(i, "AX").Value = "A"
+            Else
+                ws.Cells(i, "AX").Value = "A" ' ðŒ‚É‡‚í‚È‚¢ê‡‚Í‹ó”’i”CˆÓj
+            End If
+        End If
+    Next i
+
+    MsgBox "ƒ`ƒFƒbƒNŠ®—¹‚µ‚Ü‚µ‚½I", vbInformation
+
+End Sub
+
+
+
+Sub MarkCircleIfDateMatches()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim poDate As Date
+    Dim checkDate As Date
+    Dim targetWednesday As Date
+    Dim i As Long
+
+    Set ws = ThisWorkbook.Sheets("Sheet1") ' Change to your sheet name
+    lastRow = ws.Cells(ws.Rows.Count, "K").End(xlUp).Row
+
+    For i = 14 To lastRow ' Assuming row 1 is headers
+        If IsDate(ws.Cells(i, "K").Value) And IsDate(ws.Cells(i, "AK").Value) Then
+            poDate = ws.Cells(i, "K").Value
+            checkDate = ws.Cells(i, "AK").Value
+
+            ' Calculate Wednesday of the following week
+            targetWednesday = poDate + 9 ' Monday + 9 days = next week's Wednesday
+
+            If checkDate >= targetWednesday Then
+                ws.Cells(i, "AX").Value = "O"
+            Else
+                ws.Cells(i, "AX").Value = "" ' Optional: clear if condition not met
+            End If
+        End If
+    Next i
+End Sub
+
+
+
+
+
+
+
+
