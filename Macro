@@ -536,4 +536,150 @@ End Sub
 
 
 
+-- 110325 0745
+
+Sub CheckAndCopy_All_WithDateCheck()
+    Dim wbThis As Workbook
+    Dim wsThis As Worksheet
+    Dim wbCompare As Workbook
+    Dim wsCompare As Worksheet
+    Dim fd As FileDialog
+    Dim filePath As String
+    Dim lastRowAI As Long, lastRowE As Long
+    Dim cell As Range
+    Dim val As Variant
+    
+    Dim dictG As Object, dictX As Object
+    Dim dictS As Object, dictT As Object
+    Dim dictAC As Object
+    
+    Dim SourceValueS As String, SourceValueT As String
+    Dim CommaPosS As Long, CommaPosT As Long
+    Dim S_Before As String, S_After As String
+    Dim T_Before As String, T_After As String
+    
+    Dim poDate As Date, checkDate As Date, targetWednesday As Date
+    
+    Application.ScreenUpdating = False
+    Application.EnableEvents = False
+    
+    Set wbThis = ThisWorkbook
+    Set wsThis = wbThis.ActiveSheet
+    
+    '--- Open File Dialog
+    Set fd = Application.FileDialog(msoFileDialogFilePicker)
+    fd.Title = "Select file to compare (Columns E, G, X, S, T, AC)"
+    fd.Filters.Clear
+    fd.Filters.Add "Excel Files", "*.xls; *.xlsx; *.xlsm"
+    
+    If fd.Show <> -1 Then
+        MsgBox "No file selected. Process cancelled.", vbInformation
+        Exit Sub
+    End If
+    
+    filePath = fd.SelectedItems(1)
+    Set wbCompare = Workbooks.Open(filePath)
+    Set wsCompare = wbCompare.Sheets(1) ' Adjust if needed
+    
+    '--- Create dictionaries for fast lookups
+    Set dictG = CreateObject("Scripting.Dictionary")
+    Set dictX = CreateObject("Scripting.Dictionary")
+    Set dictS = CreateObject("Scripting.Dictionary")
+    Set dictT = CreateObject("Scripting.Dictionary")
+    Set dictAC = CreateObject("Scripting.Dictionary")
+    
+    lastRowE = wsCompare.Cells(wsCompare.Rows.Count, "E").End(xlUp).Row
+    
+    '--- Load all values from the selected file
+    Dim key As Variant
+    For Each cell In wsCompare.Range("E2:E" & lastRowE)
+        If Not IsEmpty(cell.Value) Then
+            key = Trim(cell.Value)
+            dictG(key) = wsCompare.Cells(cell.Row, "G").Value
+            dictX(key) = wsCompare.Cells(cell.Row, "X").Value
+            dictS(key) = wsCompare.Cells(cell.Row, "S").Value
+            dictT(key) = wsCompare.Cells(cell.Row, "T").Value
+            dictAC(key) = wsCompare.Cells(cell.Row, "AC").Value
+        End If
+    Next cell
+    
+    '--- Compare AI in trial_wss1.xlsm
+    lastRowAI = wsThis.Cells(wsThis.Rows.Count, "AI").End(xlUp).Row
+    
+    Dim i As Long
+    For Each cell In wsThis.Range("AI2:AI" & lastRowAI)
+        val = Trim(cell.Value)
+        i = cell.Row
+        
+        If dictG.exists(val) Then
+            ' Copy G → AJ
+            wsThis.Cells(i, "AJ").Value = dictG(val)
+            
+            ' Copy X → AK
+            wsThis.Cells(i, "AK").Value = dictX(val)
+            
+            ' Copy AC → AQ
+            wsThis.Cells(i, "AQ").Value = dictAC(val)
+            
+            ' --- Get and process S and T ---
+            SourceValueS = Trim(dictS(val))
+            SourceValueT = Trim(dictT(val))
+            
+            CommaPosS = InStr(1, SourceValueS, ",")
+            CommaPosT = InStr(1, SourceValueT, ",")
+            
+            If CommaPosS = 0 Then
+                ' No comma in S
+                wsThis.Cells(i, "AM").Value = SourceValueS & " " & SourceValueT
+                wsThis.Cells(i, "AN").Value = "DIRECT"
+            Else
+                ' Has comma in S
+                S_Before = Trim(Left(SourceValueS, CommaPosS - 1))
+                S_After = Trim(Mid(SourceValueS, CommaPosS + 1))
+                
+                If CommaPosT > 0 Then
+                    T_Before = Trim(Left(SourceValueT, CommaPosT - 1))
+                    T_After = Trim(Mid(SourceValueT, CommaPosT + 1))
+                Else
+                    T_Before = SourceValueT
+                    T_After = SourceValueT
+                End If
+                
+                wsThis.Cells(i, "AM").Value = S_Before & " " & T_Before
+                wsThis.Cells(i, "AN").Value = S_After & " " & T_After
+            End If
+            
+            ' --- New Logic: Check Dates in K and AK ---
+            If IsDate(wsThis.Cells(i, "K").Value) And IsDate(wsThis.Cells(i, "AK").Value) Then
+                poDate = wsThis.Cells(i, "K").Value
+                checkDate = wsThis.Cells(i, "AK").Value
+                
+                ' Wednesday of the following week
+                targetWednesday = poDate + 9
+                
+                If checkDate >= targetWednesday Then
+                    wsThis.Cells(i, "AX").Value = "O"
+                Else
+                    wsThis.Cells(i, "AX").Value = "" ' Optional: clear if not met
+                End If
+            End If
+            
+        Else
+            ' No match - optional clearing
+            wsThis.Cells(i, "AJ").Value = ""
+            wsThis.Cells(i, "AK").Value = ""
+            wsThis.Cells(i, "AM").Value = ""
+            wsThis.Cells(i, "AN").Value = ""
+            wsThis.Cells(i, "AQ").Value = ""
+            wsThis.Cells(i, "AX").Value = ""
+        End If
+    Next cell
+    
+    wbCompare.Close SaveChanges:=False
+    
+    MsgBox "Done! All columns copied and date logic applied.", vbInformation
+    
+    Application.ScreenUpdating = True
+    Application.EnableEvents = True
+End Sub
 
