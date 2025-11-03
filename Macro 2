@@ -307,3 +307,51 @@ Checks dates (K and AK) to determine if the condition meets the next week’s We
 ---
 
 Would you like me to make a version with inline comments (on each line) for easier reading inside the VBA editor?
+
+
+
+---
+
+
+Here’s a simple and clear email version you can send with your macro file:
+
+
+---
+
+Subject: Attached: Updated Macro File
+
+Body:
+Hi [Recipient’s Name],
+
+Please see the attached updated macro file for your review.
+
+Summary of What This Code Does:
+
+1. Prompts the user to open a source Excel file.
+
+
+2. For each row in the current sheet (starting from row 14):
+
+Looks for a match in Column E of the source file.
+
+If found, copies:
+
+Column G → AJ (only if AJ is empty)
+
+Column X → AK, Column AC → AQ
+
+
+Processes Columns S and T for combined values into AM/AN.
+
+Checks dates (K and AK) to determine if the condition meets the next week’s Wednesday rule, marking Column AX = "O" if true.
+
+
+
+
+Thank you,
+Kheanne
+
+
+---
+
+Would you like me to make a slightly more formal version (for managers) or keep it in this simple tone for teammates?
