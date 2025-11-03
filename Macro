@@ -960,3 +960,33 @@ Would you like me to now upgrade this macro to use a Scripting.Dictionary for mu
 ---
 
 If a cell in Column G is empty, look for the same value in Column E and copy the corresponding value from Column G where it's not empty.
+
+
+--
+
+' --- Copy values if matched ---
+Dim firstAddress As String
+Dim matchFound As Boolean
+matchFound = False
+
+' ✅ Copy G→AJ (only if AJ is empty)
+If Trim(ws.Cells(i, "AJ").Value) = "" Then
+    ' Check if Column G has value
+    If Trim(wsSrc.Cells(FindRng.Row, "G").Value) <> "" Then
+        ws.Cells(i, "AJ").Value = wsSrc.Cells(FindRng.Row, "G").Value
+        matchFound = True
+    Else
+        ' If G is empty, look for another same E with non-empty G
+        firstAddress = FindRng.Address
+        Do
+            Set FindRng = wsSrc.Range("E2:E" & lastRowSrc).FindNext(FindRng)
+            If FindRng Is Nothing Then Exit Do
+            If FindRng.Address = firstAddress Then Exit Do
+            If Trim(wsSrc.Cells(FindRng.Row, "G").Value) <> "" Then
+                ws.Cells(i, "AJ").Value = wsSrc.Cells(FindRng.Row, "G").Value
+                matchFound = True
+                Exit Do
+            End If
+        Loop
+    End If
+End If
