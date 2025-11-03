@@ -953,3 +953,10 @@ Other columns (AK, AQ, AM, AN, AX) still update normally.
 ---
 
 Would you like me to now upgrade this macro to use a Scripting.Dictionary for much faster matching (especially if your source file has thousands of rows)?
+
+
+
+
+---
+
+If a cell in Column G is empty, look for the same value in Column E and copy the corresponding value from Column G where it's not empty.
