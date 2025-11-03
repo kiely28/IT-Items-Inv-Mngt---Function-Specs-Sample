@@ -683,3 +683,21 @@ Sub CheckAndCopy_All_WithDateCheck()
     Application.EnableEvents = True
 End Sub
 
+
+Booking Number	Equipment / Unit #
+MNLF30353400	KKFU7963187
+257814192	MRSU8598220
+	MRSU8598220
+257814192	
+257814192	
+	
+257793538	
+257793538	
+257793538	MRSU7620170
+	MRSU7620170
+257793538	
+
+
+
+
+
