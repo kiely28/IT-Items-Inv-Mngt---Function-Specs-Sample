@@ -699,5 +699,8 @@ MNLF30353400	KKFU7963187
 
 
 
+If the date in column AK is on or after the Wednesday of the week following the PO WK in column K (which must always be a Monday here), enter '○' in column AX.
+
+
 
 
