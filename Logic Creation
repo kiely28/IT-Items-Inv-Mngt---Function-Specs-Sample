@@ -1253,3 +1253,213 @@ Stock balance auto-updates	via updates or stored procedure
 ---
 
 Would you like me to show a diagram or flowchart for this “partial cable transfer” logic (so you can use it for documentation or system design)?
+
+
+-- 0224
+
+Excellent — you’re now thinking about combined stock viewing, where each category (like Printer, PC, Cable) might have different units of measure (UOM) and stock computation logic.
+
+Let’s build a flexible SQL logic and explanation so you can view all item stocks, whether they are count-based (like laptops, printers, PCs) or length-based (like cables, wires).
+
+
+---
+
+🎯 GOAL
+
+To display all available stocks per category, showing:
+
+Category name
+
+UOM (e.g., pcs, box, meter)
+
+Stock quantity or remaining length
+
+Optional: show by location
+
+
+
+---
+
+🧩 1️⃣ Data Setup (Recap)
+
+You already have your main table:
+
+Tbl_Items
+-----------------------------
+ItemID             (int)
+ControlNo          (nvarchar)
+CategoryID         (int)
+Brand              (nvarchar)
+Model              (nvarchar)
+UOM                (nvarchar)   -- 'pc', 'box', 'm'
+Quantity           (decimal)    -- for pcs
+TotalLength        (decimal)    -- for cables
+LengthRemaining    (decimal)
+LocationID         (int)
+Status             (nvarchar)
+
+
+---
+
+🧮 2️⃣ Logic: Unified Stock View Query
+
+Here’s a smart query that shows both piece-count and meter-length stocks together:
+
+SELECT 
+    c.CategoryName,
+    i.UOM,
+    CASE 
+        WHEN i.UOM IN ('pc','pcs','unit','box') 
+             THEN SUM(i.Quantity)
+        WHEN i.UOM IN ('m','meter','meters') 
+             THEN SUM(i.LengthRemaining)
+        ELSE SUM(i.Quantity)
+    END AS TotalStock,
+    l.LocationName
+FROM Tbl_Items i
+JOIN Tbl_Category c ON i.CategoryID = c.CategoryID
+JOIN Tbl_Location l ON i.LocationID = l.LocationID
+WHERE i.Status = 'Active'
+GROUP BY c.CategoryName, i.UOM, l.LocationName
+ORDER BY c.CategoryName, l.LocationName;
+
+
+---
+
+🧾 Example Output
+
+CategoryName	UOM	TotalStock	LocationName
+
+Cable	m	250.00	IT Storage
+Cable	m	50.00	Server Room
+Printer	pc	5	Admin Office
+PC	pc	8	HR Department
+
+
+
+---
+
+✅ Explanation:
+
+CASE chooses how to calculate stock:
+
+For count-based items (Printer, PC, Laptop): uses SUM(Quantity)
+
+For length-based items (Cable): uses SUM(LengthRemaining)
+
+
+GROUP BY lets you see per category, UOM, and location.
+
+WHERE i.Status = 'Active' filters out disposed/replaced items.
+
+
+
+---
+
+📊 3️⃣ If You Want a General Summary per Category (No Location Breakdown)
+
+You can simplify the query:
+
+SELECT 
+    c.CategoryName,
+    i.UOM,
+    CASE 
+        WHEN i.UOM IN ('pc','pcs','unit','box') 
+             THEN SUM(i.Quantity)
+        WHEN i.UOM IN ('m','meter','meters') 
+             THEN SUM(i.LengthRemaining)
+        ELSE SUM(i.Quantity)
+    END AS TotalStock
+FROM Tbl_Items i
+JOIN Tbl_Category c ON i.CategoryID = c.CategoryID
+WHERE i.Status = 'Active'
+GROUP BY c.CategoryName, i.UOM
+ORDER BY c.CategoryName;
+
+🧩 Output:
+
+CategoryName	UOM	TotalStock
+
+Cable	m	300.00
+Printer	pc	5
+PC	pc	8
+
+
+
+---
+
+🧮 4️⃣ Optional: Create a Reusable View
+
+To make this report easy to access from your app, create a SQL view:
+
+CREATE VIEW vw_ItemStocks AS
+SELECT 
+    c.CategoryName,
+    i.UOM,
+    CASE 
+        WHEN i.UOM IN ('pc','pcs','unit','box') 
+             THEN SUM(i.Quantity)
+        WHEN i.UOM IN ('m','meter','meters') 
+             THEN SUM(i.LengthRemaining)
+        ELSE SUM(i.Quantity)
+    END AS TotalStock,
+    l.LocationName
+FROM Tbl_Items i
+JOIN Tbl_Category c ON i.CategoryID = c.CategoryID
+JOIN Tbl_Location l ON i.LocationID = l.LocationID
+WHERE i.Status = 'Active'
+GROUP BY c.CategoryName, i.UOM, l.LocationName;
+
+Then you can simply run:
+
+SELECT * FROM vw_ItemStocks;
+
+
+---
+
+🧾 5️⃣ Optional: Total All Stocks (summary row)
+
+To get an overall total (all categories combined), you can add a ROLLUP grouping:
+
+SELECT 
+    COALESCE(c.CategoryName, 'ALL CATEGORIES') AS CategoryName,
+    i.UOM,
+    CASE 
+        WHEN i.UOM IN ('pc','pcs','unit','box') 
+             THEN SUM(i.Quantity)
+        WHEN i.UOM IN ('m','meter','meters') 
+             THEN SUM(i.LengthRemaining)
+        ELSE SUM(i.Quantity)
+    END AS TotalStock
+FROM Tbl_Items i
+JOIN Tbl_Category c ON i.CategoryID = c.CategoryID
+WHERE i.Status = 'Active'
+GROUP BY ROLLUP (c.CategoryName, i.UOM);
+
+🧩 Output Example:
+
+CategoryName	UOM	TotalStock
+
+Cable	m	300.00
+PC	pc	8
+Printer	pc	5
+ALL CATEGORIES	NULL	313.00
+
+
+
+---
+
+✅ Summary Table
+
+Purpose	SQL Type	Description
+
+Stocks per category	GROUP BY CategoryName	Total stock by UOM
+Stocks per category + location	Add l.LocationName	Show per-site breakdown
+All categories in one report	ROLLUP	Includes totals
+Easy reuse	CREATE VIEW vw_ItemStocks	Simplifies reporting
+
+
+
+---
+
+Would you like me to include a flowchart or dashboard mockup showing how this “Stock Summary per Category and UOM” would look visually (like a table or chart in your web app)?
