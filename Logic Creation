@@ -809,3 +809,215 @@ Reusable summary	Create VIEW or stored procedure
 ---
 
 Would you like me to show how to create a stored procedure (so you can call it easily from your app, e.g., EXEC GetCategoryStock 'Active')?
+
+
+-- 1100
+
+Excellent question 👏 — you’re thinking about multi-location item tracking, which is a key feature in any inventory management system.
+
+Let’s walk through exactly how this works in your design — both logically and in database behavior — for your example:
+
+> 🔄 Item transferred from Location A → B, then B → C after a month.
+
+
+
+
+---
+
+🧠 THE CONCEPT: Item Movement History
+
+You want to retain the complete movement trail of each item while always knowing the current location.
+
+We’ll use two tables together:
+
+1. Tbl_Items → stores current location and status.
+
+
+2. Tbl_Transfers → stores all transfer history records.
+
+
+
+
+---
+
+🔹 STEP-BY-STEP LOGIC FLOW
+
+📦 Initial (IN Module)
+
+Item is first added to inventory in Location A.
+
+
+INSERT INTO Tbl_Items
+(ControlNo, CategoryID, SerialNo, Brand, Model, Quantity, LocationID, Status)
+VALUES ('LAP-20251017-0001', 1, 'SN12345', 'Dell', 'Inspiron 15', 1, 1, 'Active');
+
+> 📍 LocationID = 1 (Location A)
+
+
+
+
+---
+
+🚚 First Transfer (A → B)
+
+When the item moves from Location A to B:
+
+1. Insert transfer record:
+
+
+
+INSERT INTO Tbl_Transfers
+(ControlNo, FromLocationID, ToLocationID, TransferBy)
+VALUES ('LAP-20251017-0001', 1, 2, 5);
+
+2. Update item’s current location:
+
+
+
+UPDATE Tbl_Items
+SET LocationID = 2, Status = 'Transferred'
+WHERE ControlNo = 'LAP-20251017-0001';
+
+✅ Now the item’s current location = B.
+✅ But we keep the record of A → B in Tbl_Transfers.
+
+
+---
+
+🚛 Second Transfer (B → C, after a month)
+
+After one month, the same process repeats:
+
+1. Insert new transfer record:
+
+
+
+INSERT INTO Tbl_Transfers
+(ControlNo, FromLocationID, ToLocationID, TransferBy)
+VALUES ('LAP-20251017-0001', 2, 3, 5);
+
+2. Update item’s location again:
+
+
+
+UPDATE Tbl_Items
+SET LocationID = 3, Status = 'Transferred'
+WHERE ControlNo = 'LAP-20251017-0001';
+
+✅ Now the item’s current location = C.
+✅ You now have two transfer history records:
+
+A → B
+
+B → C
+
+
+
+---
+
+📋 Example Transfer History Table
+
+TransferID	ControlNo	FromLocationID	ToLocationID	TransferDate	TransferBy
+
+1	LAP-20251017-0001	1	2	2025-10-17	5
+2	LAP-20251017-0001	2	3	2025-11-17	5
+
+
+
+---
+
+🔍 To View the Item’s Transfer History
+
+You can use a SQL query like this:
+
+SELECT 
+    t.TransferID,
+    i.ControlNo,
+    l1.LocationName AS FromLocation,
+    l2.LocationName AS ToLocation,
+    t.TransferDate,
+    u.FullName AS TransferredBy
+FROM Tbl_Transfers t
+JOIN Tbl_Items i ON t.ControlNo = i.ControlNo
+JOIN Tbl_Location l1 ON t.FromLocationID = l1.LocationID
+JOIN Tbl_Location l2 ON t.ToLocationID = l2.LocationID
+JOIN Tbl_User u ON t.TransferBy = u.UserID
+WHERE t.ControlNo = 'LAP-20251017-0001'
+ORDER BY t.TransferDate;
+
+🧩 Example Output:
+
+TransferID	ControlNo	FromLocation	ToLocation	TransferDate	TransferredBy
+
+1	LAP-20251017-0001	IT Storage	Admin Office	2025-10-17	John Dela Cruz
+2	LAP-20251017-0001	Admin Office	HR Dept	2025-11-17	John Dela Cruz
+
+
+
+---
+
+📊 To Get the Current Location of Any Item
+
+You can simply read it from Tbl_Items:
+
+SELECT 
+    i.ControlNo,
+    c.CategoryName,
+    l.LocationName AS CurrentLocation,
+    i.Status
+FROM Tbl_Items i
+JOIN Tbl_Category c ON i.CategoryID = c.CategoryID
+JOIN Tbl_Location l ON i.LocationID = l.LocationID
+WHERE i.ControlNo = 'LAP-20251017-0001';
+
+🧩 Output:
+
+ControlNo	CategoryName	CurrentLocation	Status
+
+LAP-20251017-0001	Laptop	HR Dept	Transferred
+
+
+
+---
+
+⚙️ Summary of Logic
+
+Step	Table	Action	Result
+
+Add new item	Tbl_Items	Insert	Location = A
+Transfer A→B	Tbl_Transfers	Insert	Item Location updated to B
+Transfer B→C	Tbl_Transfers	Insert	Item Location updated to C
+View History	Tbl_Transfers	Select	See full movement chain
+View Current	Tbl_Items	Select	Shows latest location only
+
+
+
+---
+
+✅ Optional Improvement (if you want automation)
+
+You can create a Stored Procedure for transfer so you don’t have to run two SQL statements every time:
+
+CREATE PROCEDURE TransferItem
+    @ControlNo NVARCHAR(50),
+    @FromLocationID INT,
+    @ToLocationID INT,
+    @TransferBy INT
+AS
+BEGIN
+    INSERT INTO Tbl_Transfers (ControlNo, FromLocationID, ToLocationID, TransferBy)
+    VALUES (@ControlNo, @FromLocationID, @ToLocationID, @TransferBy);
+
+    UPDATE Tbl_Items
+    SET LocationID = @ToLocationID, Status = 'Transferred'
+    WHERE ControlNo = @ControlNo;
+END;
+
+Then call it like:
+
+EXEC TransferItem 'LAP-20251017-0001', 2, 3, 5;
+
+
+---
+
+Would you like me to show you a flowchart diagram of this multi-location transfer logic (for documentation or presentation)?
