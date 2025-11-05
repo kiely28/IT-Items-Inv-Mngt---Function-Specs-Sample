@@ -1021,3 +1021,235 @@ EXEC TransferItem 'LAP-20251017-0001', 2, 3, 5;
 ---
 
 Would you like me to show you a flowchart diagram of this multi-location transfer logic (for documentation or presentation)?
+
+
+-- 0208
+
+Perfect question 💡 — this is an important case because cables, wires, and similar consumables are not managed per piece, but by length or box quantity.
+
+Let’s build logic that supports UOM (Unit of Measure) and Length/Quantity Tracking, so your system can handle both per-item assets (like laptops) and consumable items (like cables).
+
+
+---
+
+🎯 GOAL
+
+When an IT item like a cable is received:
+
+The category = “Cable”
+
+The UOM = “Box” (or “Meter”, depending on your setup)
+
+The Length = 300m
+
+You should be able to:
+
+Track total remaining length (stock balance)
+
+Deduct length when used/transferred
+
+Generate a QR code per box
+
+
+
+
+---
+
+🧩 STEP 1: Modify Tbl_Items to Support UOM and Length
+
+We’ll add fields for UOM and LengthRemaining.
+
+ALTER TABLE Tbl_Items
+ADD 
+    UOM NVARCHAR(50) NULL,           -- e.g., 'Box', 'Meter', 'Piece'
+    TotalLength DECIMAL(10,2) NULL,  -- e.g., 300.00 meters per box
+    LengthRemaining DECIMAL(10,2) NULL;  -- for tracking remaining cable
+
+
+---
+
+📦 Example Entry (IN Module)
+
+When the user inputs the item:
+
+Field	Value
+
+ControlNo	CAB-20251017-0001
+Category	Cable
+Brand	D-Link
+Model	Cat6
+UOM	Box
+TotalLength	300.00
+LengthRemaining	300.00
+Location	IT Storage
+Status	Active
+
+
+✅ System generates QR code that contains:
+
+Control No: CAB-20251017-0001
+Category: Cable
+UOM: Box
+Total Length: 300m
+Location: IT Storage
+Status: Active
+
+
+---
+
+🔄 STEP 2: Handling Partial Transfers (e.g., 100m to another location)
+
+When transferring a portion of the cable (not the whole box):
+
+Option A — Create a Transfer Record with a Length Field
+
+You’ll modify your Tbl_Transfers to include a TransferLength column:
+
+ALTER TABLE Tbl_Transfers
+ADD TransferLength DECIMAL(10,2) NULL; -- e.g., 100.00m
+
+Then each transfer can record how many meters were moved.
+
+Example Transfer
+
+ControlNo	FromLocation	ToLocation	TransferLength	TransferDate
+
+CAB-20251017-0001	IT Storage	Server Room	100.00	2025-10-18
+
+
+
+---
+
+⚙️ STEP 3: Update Stock (LengthRemaining)
+
+When you record a transfer, the system should automatically adjust the stock:
+
+SQL Logic Example
+
+UPDATE Tbl_Items
+SET LengthRemaining = LengthRemaining - 100.00
+WHERE ControlNo = 'CAB-20251017-0001';
+
+If you also want to track the new “partial” cable at the new location, you can insert a child record for that portion:
+
+INSERT INTO Tbl_Items
+(ControlNo, CategoryID, Brand, Model, UOM, TotalLength, LengthRemaining, LocationID, Status)
+VALUES ('CAB-20251017-0001A', 3, 'D-Link', 'Cat6', 'Meter', 100.00, 100.00, 4, 'Active');
+
+🧩 Now you have:
+
+ControlNo	Location	LengthRemaining	Status
+
+CAB-20251017-0001	IT Storage	200.00	Active
+CAB-20251017-0001A	Server Room	100.00	Active
+
+
+
+---
+
+🧮 STEP 4: Stock Computation for Cables
+
+To get total remaining cable length per category, you can query:
+
+SELECT 
+    c.CategoryName,
+    SUM(i.LengthRemaining) AS TotalLengthRemaining
+FROM Tbl_Items i
+JOIN Tbl_Category c ON i.CategoryID = c.CategoryID
+WHERE i.Status = 'Active' AND c.CategoryName = 'Cable'
+GROUP BY c.CategoryName;
+
+🧩 Output:
+
+CategoryName	TotalLengthRemaining
+
+Cable	300.00
+
+
+
+---
+
+📊 STEP 5: Stock Computation by Location
+
+If you want to see where each cable portion is stored:
+
+SELECT 
+    c.CategoryName,
+    l.LocationName,
+    SUM(i.LengthRemaining) AS TotalLengthRemaining
+FROM Tbl_Items i
+JOIN Tbl_Category c ON i.CategoryID = c.CategoryID
+JOIN Tbl_Location l ON i.LocationID = l.LocationID
+WHERE c.CategoryName = 'Cable' AND i.Status = 'Active'
+GROUP BY c.CategoryName, l.LocationName;
+
+🧩 Output Example:
+
+CategoryName	LocationName	TotalLengthRemaining
+
+Cable	IT Storage	200.00
+Cable	Server Room	100.00
+
+
+
+---
+
+⚙️ STEP 6: Optional Stored Procedure (for partial cable transfer)
+
+You can automate this logic with a stored procedure:
+
+CREATE PROCEDURE TransferCableLength
+    @ControlNo NVARCHAR(50),
+    @FromLocationID INT,
+    @ToLocationID INT,
+    @TransferBy INT,
+    @TransferLength DECIMAL(10,2)
+AS
+BEGIN
+    DECLARE @Remaining DECIMAL(10,2);
+
+    SELECT @Remaining = LengthRemaining FROM Tbl_Items WHERE ControlNo = @ControlNo;
+
+    IF @Remaining >= @TransferLength
+    BEGIN
+        -- Log transfer
+        INSERT INTO Tbl_Transfers (ControlNo, FromLocationID, ToLocationID, TransferBy, TransferLength)
+        VALUES (@ControlNo, @FromLocationID, @ToLocationID, @TransferBy, @TransferLength);
+
+        -- Deduct from original
+        UPDATE Tbl_Items
+        SET LengthRemaining = LengthRemaining - @TransferLength
+        WHERE ControlNo = @ControlNo;
+
+        -- Add new partial item entry
+        DECLARE @CategoryID INT, @Brand NVARCHAR(100), @Model NVARCHAR(100), @UOM NVARCHAR(50);
+        SELECT @CategoryID = CategoryID, @Brand = Brand, @Model = Model, @UOM = UOM
+        FROM Tbl_Items WHERE ControlNo = @ControlNo;
+
+        INSERT INTO Tbl_Items (ControlNo, CategoryID, Brand, Model, UOM, TotalLength, LengthRemaining, LocationID, Status)
+        VALUES (CONCAT(@ControlNo, '-', CAST(@ToLocationID AS NVARCHAR)), @CategoryID, @Brand, @Model, @UOM, @TransferLength, @TransferLength, @ToLocationID, 'Active');
+    END
+END;
+
+Then you can call:
+
+EXEC TransferCableLength 'CAB-20251017-0001', 1, 2, 5, 100.00;
+
+
+---
+
+✅ SUMMARY
+
+Scenario	Behavior
+
+Receive cable (300m per box)	Add TotalLength = LengthRemaining = 300
+Transfer 100m	Deduct 100m from main item, create new item (100m) in destination
+View current stock	Use SUM(LengthRemaining)
+Print QR per box	Include Total & Remaining length
+Stock balance auto-updates	via updates or stored procedure
+
+
+
+---
+
+Would you like me to show a diagram or flowchart for this “partial cable transfer” logic (so you can use it for documentation or system design)?
