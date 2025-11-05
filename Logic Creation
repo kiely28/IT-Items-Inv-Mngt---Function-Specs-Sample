@@ -1463,3 +1463,153 @@ Easy reuse	CREATE VIEW vw_ItemStocks	Simplifies reporting
 ---
 
 Would you like me to include a flowchart or dashboard mockup showing how this “Stock Summary per Category and UOM” would look visually (like a table or chart in your web app)?
+
+
+-- 0345
+
+Excellent question — this goes into the core logic of your inventory life cycle, especially when handling items that are transferable (like cables and boxes) versus disposable or replaceable items.
+
+Let’s break it down carefully so you’ll understand how the status should behave, and why.
+
+
+---
+
+🎯 GOAL
+
+Understand:
+
+> If a cable (UOM = 'm') or box item is transferred to another location, should its status in Tbl_Items remain "Active", or should it change?
+
+
+
+
+---
+
+🧩 1️⃣ Status Logic Overview
+
+Here’s the recommended behavior for Tbl_Items.Status across your modules:
+
+Module	Description	Item Movement	Tbl_Items.Status
+
+IN	Item newly added to stock	Adds new record	Active
+TRANSFER	Item moved from one location to another	The item stays in use, only location changes	✅ Stay "Active"
+DISPOSE	Item marked for disposal (damaged, obsolete)	Removed from usable stock	❌ Change to "Disposed"
+REPLACE	Supplier replaced old unit	Old item becomes "Replaced", new item added as new stock	❌ Old = "Replaced", New = "Active"
+
+
+
+---
+
+🧠 2️⃣ Detailed Transfer Logic Example
+
+🧩 Example: Cable (UOM = “m”)
+
+Let’s say you have:
+
+ItemID	Category	UOM	LengthRemaining	Location	Status
+
+101	Cable	m	300	Storage	Active
+
+
+Now you transfer 100 meters to another location:
+
+Action	Result
+
+Subtract 100 from old location	LengthRemaining = 200
+Add new record (or log) for new location	New entry with 100 meters
+Status of both	✅ Both remain Active
+
+
+
+---
+
+✅ After Transfer
+
+ItemID	Category	UOM	LengthRemaining	Location	Status
+
+101	Cable	m	200	Storage	Active
+102	Cable	m	100	Office	Active
+
+
+💡 Because both are still usable items, they remain “Active.”
+
+
+---
+
+🧱 3️⃣ Database Rule Logic
+
+If you want this behavior automatically in SQL or code:
+
+-- Pseudocode for Transfer Operation
+IF @Module = 'Transfer'
+BEGIN
+    UPDATE Tbl_Items
+    SET LengthRemaining = LengthRemaining - @TransferLength
+    WHERE ItemID = @ItemID AND Status = 'Active';
+
+    INSERT INTO Tbl_Items (CategoryID, UOM, LengthRemaining, LocationID, Status)
+    VALUES (@CategoryID, @UOM, @TransferLength, @NewLocationID, 'Active');
+END
+
+
+---
+
+🖋 4️⃣ For Box-Type Items
+
+If UOM = 'box', and you transfer the whole box, not partial:
+
+You can update only the location (no need to split record).
+
+The status stays “Active.”
+
+
+If you split (e.g., 10 boxes → 5 boxes per site), then:
+
+Update old record: Quantity = Quantity - 5
+
+Insert new record: Quantity = 5
+
+Both stay “Active”.
+
+
+
+---
+
+🧾 5️⃣ When to Change Status
+
+Condition	Set Status to
+
+Item physically removed or destroyed	Disposed
+Item replaced by supplier	Replaced
+Item active, even if moved	Active
+Item on hold for repair	For Repair (optional)
+
+
+
+---
+
+✅ Final Recommendation Summary
+
+UOM Type	When Transferred	Status	Action
+
+m (meter)	Partially or fully transferred	Active	Split or update record
+box	Fully transferred	Active	Update location
+pc/unit	Fully transferred	Active	Update location
+Any	Disposed or replaced	Disposed / Replaced	Change status
+
+
+
+---
+
+🧩 Example Query to Always View Only “Usable” Stocks
+
+SELECT * 
+FROM Tbl_Items 
+WHERE Status = 'Active';
+
+This ensures even transferred items still appear, since they’re still in your inventory and usable.
+
+
+---
+
+Would you like me to show you the transfer process flow diagram (from Location A ➜ B ➜ C) — showing how the status and records update automatically for cables, boxes, and pieces?
