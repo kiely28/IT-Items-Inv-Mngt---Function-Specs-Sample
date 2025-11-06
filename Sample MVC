@@ -1,3 +1,246 @@
+Perfect — you’re now extending your In Module project to include a Category field!
+Let’s go step-by-step and make sure everything is beginner-friendly and clear 🧠
+
+We’ll:
+1️⃣ Add a Category table in the database (tbl_category).
+2️⃣ Create a Category model.
+3️⃣ Update the InTransaction model to include a Category.
+4️⃣ Modify the controller, view, and stored procedure to support it.
+5️⃣ Add a simple textbox (or dropdown) to display categories.
+
+
+---
+
+🏗️ Step 1 — Update the Database
+
+Let’s say you have this SQL table:
+
+CREATE TABLE tbl_category (
+    CategoryId INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName NVARCHAR(100)
+);
+
+INSERT INTO tbl_category (CategoryName)
+VALUES ('Cables'), ('Connectors'), ('Switches');
+
+This table will hold your Category list.
+
+
+---
+
+📘 Step 2 — Create the Category Model
+
+🗂️ File: Models/Category.cs
+
+namespace InventoryInModule.Models
+{
+    public class Category
+    {
+        public int CategoryId { get; set; }
+        public string CategoryName { get; set; }
+    }
+}
+
+👉 This class represents your tbl_category table.
+
+
+---
+
+📗 Step 3 — Update the ApplicationDbContext
+
+🗂️ File: Data/ApplicationDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using InventoryInModule.Models;
+
+namespace InventoryInModule.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<InTransaction> InTransactions { get; set; }
+        public DbSet<Category> Categories { get; set; }  // ✅ Add this
+    }
+}
+
+✅ Now EF Core knows about both tables:
+
+InTransactions
+
+Categories
+
+
+
+---
+
+📙 Step 4 — Update the InTransaction Model
+
+🗂️ File: Models/InTransaction.cs
+
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InventoryInModule.Models
+{
+    public class InTransaction
+    {
+        public int Id { get; set; }
+        public string ItemName { get; set; }
+        public int Quantity { get; set; }
+
+        // ✅ Add Category Reference
+        [ForeignKey("Category")]
+        public int CategoryId { get; set; }
+        public Category Category { get; set; }
+    }
+}
+
+👉 This tells EF Core that each transaction belongs to one Category.
+
+
+---
+
+📘 Step 5 — Update the Controller
+
+🗂️ File: Controllers/InController.cs
+
+We’ll make sure the Create action can load categories into a dropdown or textbox.
+
+using Microsoft.AspNetCore.Mvc;
+using InventoryInModule.Data;
+using InventoryInModule.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace InventoryInModule.Controllers
+{
+    public class InController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public InController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: /In/Create
+        public IActionResult Create()
+        {
+            // ✅ Load categories from database
+            ViewBag.Categories = _context.Categories.ToList();
+            return View();
+        }
+
+        // POST: /In/Create
+        [HttpPost]
+        public IActionResult Create(InTransaction transaction)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.InTransactions.Add(transaction);
+                _context.SaveChanges();
+                return RedirectToAction("Index");
+            }
+
+            // Reload categories if something fails
+            ViewBag.Categories = _context.Categories.ToList();
+            return View(transaction);
+        }
+
+        // List all transactions
+        public IActionResult Index()
+        {
+            var list = _context.InTransactions.Include(t => t.Category).ToList();
+            return View(list);
+        }
+    }
+}
+
+
+---
+
+🧾 Step 6 — Create or Update the View
+
+🗂️ File: Views/In/Create.cshtml
+
+@model InventoryInModule.Models.InTransaction
+
+<h2>Add New Transaction</h2>
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Category</label>
+        <!-- ✅ Dropdown populated from tbl_category -->
+        <select asp-for="CategoryId" class="form-control" asp-items="@(new SelectList(ViewBag.Categories, "CategoryId", "CategoryName"))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+
+👉 When the page loads, the dropdown will automatically show all categories from the tbl_category table.
+
+
+---
+
+💾 Step 7 — Stored Procedure (Optional)
+
+If you want to use a stored procedure for inserting instead of EF’s .Add(), you can do this in SQL:
+
+CREATE PROCEDURE sp_AddInTransaction
+    @ItemName NVARCHAR(100),
+    @Quantity INT,
+    @CategoryId INT
+AS
+BEGIN
+    INSERT INTO tbl_intransactions (ItemName, Quantity, CategoryId)
+    VALUES (@ItemName, @Quantity, @CategoryId)
+END
+
+Then modify your controller like:
+
+_context.Database.ExecuteSqlRaw(
+    "EXEC sp_AddInTransaction @p0, @p1, @p2",
+    transaction.ItemName, transaction.Quantity, transaction.CategoryId);
+
+
+---
+
+🧠 Step-by-Step Summary for Beginners
+
+Step	Description	File / Command
+
+1️⃣	Create tbl_category in SQL	SQL script
+2️⃣	Create Category model	Models/Category.cs
+3️⃣	Register in ApplicationDbContext	Data/ApplicationDbContext.cs
+4️⃣	Add CategoryId to InTransaction	Models/InTransaction.cs
+5️⃣	Load and save category in controller	Controllers/InController.cs
+6️⃣	Add dropdown in Create view	Views/In/Create.cshtml
+7️⃣	Optional: use stored procedure for insert	SQL + Controller
+
+
+
+---
+
+Would you like me to also show the Index View (Views/In/Index.cshtml) that lists all transactions with category name displayed?
+
+
+
+** 0152
+
 Perfect 👍 — let’s go step-by-step and explain everything clearly like a beginner-friendly tutorial.
 
 We’ll review the In Module project you just created using ASP.NET Core MVC + Entity Framework Core + Stored Procedure, and explain how each part works, why we use it, and how the data flows.
