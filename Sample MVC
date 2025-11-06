@@ -1,3 +1,240 @@
+Perfect 👍 you’re now taking your ASP.NET Core MVC project to the next level — adding a Category dropdown that gets data from the database using a stored procedure.
+
+Let’s go step by step, clearly explained for beginners so you’ll understand how and why each part works.
+
+
+---
+
+🎯 GOAL
+
+We’ll enhance your In Module (Inventory In) to include a dropdown for selecting a Category.
+
+The category list will come from the SQL table tbl_category.
+
+The data will be retrieved using a stored procedure.
+
+We’ll bind the data to a dropdown (<select>) in the View.
+
+
+
+---
+
+🗄️ Step 1: SQL Table and Stored Procedure
+
+🧱 Create the table tbl_category
+
+Run this SQL script in SQL Server:
+
+CREATE TABLE tbl_category (
+    CategoryID INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName NVARCHAR(100)
+);
+
+-- Sample data
+INSERT INTO tbl_category (CategoryName) VALUES ('Cable');
+INSERT INTO tbl_category (CategoryName) VALUES ('Connector');
+INSERT INTO tbl_category (CategoryName) VALUES ('Device');
+
+⚙️ Create the stored procedure sp_GetCategories
+
+This procedure returns all active categories:
+
+CREATE PROCEDURE sp_GetCategories
+AS
+BEGIN
+    SELECT CategoryID, CategoryName FROM tbl_category ORDER BY CategoryName;
+END
+
+
+---
+
+💻 Step 2: Create the Category Model
+
+In Models folder, create a new file Category.cs:
+
+namespace InventoryInModule.Models
+{
+    public class Category
+    {
+        public int CategoryID { get; set; }
+        public string CategoryName { get; set; }
+    }
+}
+
+
+---
+
+🧩 Step 3: Modify ApplicationDbContext.cs
+
+Add a method to call the stored procedure.
+
+using Microsoft.EntityFrameworkCore;
+using InventoryInModule.Models;
+
+namespace InventoryInModule.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<InTransaction> InTransactions { get; set; }
+
+        // Category is not a main table we track — it’s for lookup
+        public DbSet<Category> Categories { get; set; }
+
+        // Method to call stored procedure
+        public async Task<List<Category>> GetCategoriesAsync()
+        {
+            return await Categories.FromSqlRaw("EXEC sp_GetCategories").ToListAsync();
+        }
+    }
+}
+
+🧠 Explanation:
+
+FromSqlRaw("EXEC sp_GetCategories") tells EF Core to execute a stored procedure and map the result to the Category model.
+
+ToListAsync() converts the data to a List<Category>.
+
+
+
+---
+
+🎮 Step 4: Modify the Controller
+
+Open Controllers/InController.cs
+Add logic to fetch the categories for the dropdown.
+
+using Microsoft.AspNetCore.Mvc;
+using InventoryInModule.Data;
+using InventoryInModule.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace InventoryInModule.Controllers
+{
+    public class InController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public InController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: In/Create
+        public async Task<IActionResult> Create()
+        {
+            // Load categories from stored procedure
+            var categories = await _context.GetCategoriesAsync();
+            ViewBag.Categories = categories;
+
+            return View();
+        }
+
+        // POST: In/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(InTransaction model)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.InTransactions.Add(model);
+                await _context.SaveChangesAsync();
+                return RedirectToAction("Index");
+            }
+
+            // reload dropdown if validation fails
+            ViewBag.Categories = await _context.GetCategoriesAsync();
+            return View(model);
+        }
+    }
+}
+
+🧠 Explanation:
+
+ViewBag.Categories temporarily stores category data for the View.
+
+When you open the form, categories will automatically appear in the dropdown.
+
+
+
+---
+
+🧾 Step 5: Modify the View
+
+Open Views/In/Create.cshtml
+
+Add a Category dropdown above the other fields:
+
+@model InventoryInModule.Models.InTransaction
+
+@{
+    ViewData["Title"] = "Create In Transaction";
+}
+
+<h2>Create In Transaction</h2>
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label>Category</label>
+        <select asp-for="CategoryID" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "CategoryID", "CategoryName"))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Received Date</label>
+        <input asp-for="ReceivedDate" type="date" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+</form>
+
+
+---
+
+🧠 Step-by-Step Summary
+
+Step	Description	Purpose
+
+1	Create SQL table + stored procedure	Defines where category data lives
+2	Create Category model	Allows EF Core to map data from SQL
+3	Add GetCategoriesAsync() in ApplicationDbContext	Fetches categories via stored procedure
+4	Update controller	Passes category list to View
+5	Update View	Displays dropdown using ViewBag.Categories
+
+
+
+---
+
+✅ Final Result
+
+When you open
+👉 /In/Create
+You’ll see a dropdown list that shows categories fetched from your stored procedure (sp_GetCategories).
+
+
+---
+
+Would you like me to add CategoryID as a foreign key to your InTransaction table next — so the selected category is actually saved in your database when you submit the form?
+
+
+** 0421
+
 Perfect 👍 You’re doing this the right way — let’s now put everything together for your simple ASP.NET Core MVC “In Module” project with an additional Category field, complete and beginner-friendly.
 
 This version includes:
