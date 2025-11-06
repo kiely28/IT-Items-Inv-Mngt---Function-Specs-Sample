@@ -1,3 +1,314 @@
+Perfect — let’s level up your In Module project using ASP.NET Core MVC + Entity Framework Core + Stored Procedure ✅
+
+We’ll go step-by-step so you can run it easily in Visual Studio or VS Code.
+The project will allow you to add an “IN Transaction” that saves to a SQL table using a stored procedure executed through EF Core.
+
+
+---
+
+🧩 PROJECT OVERVIEW
+
+🎯 Goal:
+
+A simple Inventory In Module that:
+
+Lets users input an item name and quantity.
+
+Saves the data using a SQL stored procedure.
+
+Uses Entity Framework Core for database access.
+
+
+
+---
+
+🧱 STEP 1: Create SQL Table + Stored Procedure
+
+In SQL Server Management Studio (SSMS), create a new database (e.g. InventoryDB) and run:
+
+CREATE TABLE tblInTransactions (
+    InID INT IDENTITY(1,1) PRIMARY KEY,
+    ItemName NVARCHAR(100),
+    Quantity INT,
+    DateIn DATETIME DEFAULT GETDATE()
+);
+GO
+
+CREATE PROCEDURE sp_InsertInTransaction
+    @ItemName NVARCHAR(100),
+    @Quantity INT
+AS
+BEGIN
+    INSERT INTO tblInTransactions (ItemName, Quantity)
+    VALUES (@ItemName, @Quantity);
+END;
+GO
+
+
+---
+
+⚙️ STEP 2: Create ASP.NET Core MVC Project
+
+In your terminal (Git Bash or PowerShell):
+
+dotnet new mvc -n InventoryInModule
+cd InventoryInModule
+
+This creates an MVC project.
+
+
+---
+
+🧩 STEP 3: Install Entity Framework Core SQL Server Provider
+
+Run these commands inside the project folder:
+
+dotnet add package Microsoft.EntityFrameworkCore
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add package Microsoft.EntityFrameworkCore.Tools
+
+
+---
+
+⚙️ STEP 4: Add Connection String
+
+In appsettings.json:
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SERVER;Database=InventoryDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+> 💡 Replace YOUR_SERVER with your actual SQL Server name.
+
+
+
+
+---
+
+🧱 STEP 5: Create the Model
+
+File: Models/InTransaction.cs
+
+using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace InventoryInModule.Models
+{
+    public class InTransaction
+    {
+        [Key]
+        public int InID { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string ItemName { get; set; }
+
+        [Required]
+        public int Quantity { get; set; }
+
+        public DateTime DateIn { get; set; }
+    }
+}
+
+
+---
+
+🧱 STEP 6: Create the Database Context
+
+File: Data/ApplicationDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using InventoryInModule.Models;
+
+namespace InventoryInModule.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<InTransaction> InTransactions { get; set; }
+    }
+}
+
+
+---
+
+🧩 STEP 7: Register the Context in Program.cs
+
+File: Program.cs
+
+using InventoryInModule.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddControllersWithViews();
+
+// Register EF Core
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=In}/{action=Index}/{id?}");
+
+app.Run();
+
+
+---
+
+🧩 STEP 8: Create Controller
+
+File: Controllers/InController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using InventoryInModule.Data;
+using InventoryInModule.Models;
+using System.Threading.Tasks;
+
+namespace InventoryInModule.Controllers
+{
+    public class InController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public InController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        public IActionResult Index()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Index(InTransaction model)
+        {
+            if (ModelState.IsValid)
+            {
+                var itemNameParam = new SqlParameter("@ItemName", model.ItemName);
+                var qtyParam = new SqlParameter("@Quantity", model.Quantity);
+
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_InsertInTransaction @ItemName, @Quantity",
+                    itemNameParam, qtyParam
+                );
+
+                ViewBag.Message = "Item successfully added!";
+                ModelState.Clear();
+            }
+
+            return View();
+        }
+    }
+}
+
+
+---
+
+🎨 STEP 9: Create View
+
+File: Views/In/Index.cshtml
+
+@model InventoryInModule.Models.InTransaction
+@{
+    ViewData["Title"] = "In Module";
+}
+
+<div class="container mt-4">
+    <h2>In Transaction Entry</h2>
+
+    <form asp-action="Index" method="post" class="mt-3">
+        <div class="mb-3">
+            <label asp-for="ItemName" class="form-label"></label>
+            <input asp-for="ItemName" class="form-control" required />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Quantity" class="form-label"></label>
+            <input asp-for="Quantity" type="number" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+
+    @if (ViewBag.Message != null)
+    {
+        <div class="alert alert-success mt-3">@ViewBag.Message</div>
+    }
+</div>
+
+
+---
+
+🚀 STEP 10: Run the Project
+
+In terminal or Visual Studio:
+
+dotnet run
+
+Then open:
+
+https://localhost:xxxx/In
+
+Enter an item and quantity → click Save →
+✅ The stored procedure will run through Entity Framework Core and insert data into tblInTransactions.
+
+
+---
+
+✅ SUMMARY
+
+Component	Purpose
+
+tblInTransactions	Database table
+sp_InsertInTransaction	SQL stored procedure
+InTransaction.cs	EF Core model
+ApplicationDbContext.cs	EF Core DB context
+InController.cs	Controller to call SP
+Index.cshtml	Simple input view
+
+
+
+---
+
+Would you like me to extend this example next to include:
+
+🔍 Viewing all saved transactions (list page), or
+
+📦 Dropdown for selecting item from an “Items” table?
+
+***
+
+
+
 Absolutely 👍 Let’s create a simple “IN Module” project using ASP.NET Core MVC + SQL Server Stored Procedure — step by step.
 
 We’ll build a small Inventory “IN Transaction” where users can record items being received into the system.
