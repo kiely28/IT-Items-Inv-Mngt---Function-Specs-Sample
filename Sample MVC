@@ -1,3 +1,396 @@
+Perfect 👍 You’re doing this the right way — let’s now put everything together for your simple ASP.NET Core MVC “In Module” project with an additional Category field, complete and beginner-friendly.
+
+This version includes:
+
+✅ Full working code (Controller + Models + DbContext + Views)
+
+✅ Category dropdown populated from tbl_category
+
+✅ Optional stored procedure version
+
+✅ Clear explanations
+
+
+
+---
+
+🧩 COMPLETE PROJECT STRUCTURE
+
+InventoryInModule/
+│
+├── Controllers/
+│   └── InController.cs
+│
+├── Models/
+│   ├── InTransaction.cs
+│   └── Category.cs
+│
+├── Data/
+│   └── ApplicationDbContext.cs
+│
+├── Views/
+│   └── In/
+│       ├── Create.cshtml
+│       └── Index.cshtml
+│
+├── appsettings.json
+├── Program.cs
+└── InventoryInModule.csproj
+
+
+---
+
+🧱 1️⃣ Database Setup
+
+Run these SQL commands in your SQL Server:
+
+CREATE TABLE tbl_category (
+    CategoryId INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName NVARCHAR(100)
+);
+
+INSERT INTO tbl_category (CategoryName)
+VALUES ('Cables'), ('Connectors'), ('Switches');
+
+CREATE TABLE tbl_intransactions (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    ItemName NVARCHAR(100),
+    Quantity INT,
+    CategoryId INT,
+    FOREIGN KEY (CategoryId) REFERENCES tbl_category(CategoryId)
+);
+
+
+---
+
+🗂️ 2️⃣ Models
+
+Models/Category.cs
+
+namespace InventoryInModule.Models
+{
+    public class Category
+    {
+        public int CategoryId { get; set; }
+        public string CategoryName { get; set; }
+    }
+}
+
+
+---
+
+Models/InTransaction.cs
+
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InventoryInModule.Models
+{
+    public class InTransaction
+    {
+        public int Id { get; set; }
+        public string ItemName { get; set; }
+        public int Quantity { get; set; }
+
+        // ✅ Foreign key to Category
+        [ForeignKey("Category")]
+        public int CategoryId { get; set; }
+        public Category Category { get; set; }
+    }
+}
+
+🧠 Explanation:
+Each InTransaction record links to one Category using CategoryId.
+
+
+---
+
+💾 3️⃣ ApplicationDbContext
+
+🗂️ Data/ApplicationDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using InventoryInModule.Models;
+
+namespace InventoryInModule.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<InTransaction> InTransactions { get; set; }
+        public DbSet<Category> Categories { get; set; }  // ✅ Add this
+    }
+}
+
+🧠 Explanation:
+This connects your code models (InTransaction, Category) to the real SQL tables.
+
+
+---
+
+⚙️ 4️⃣ Register Database Connection
+
+🗂️ In your Program.cs, add this:
+
+using InventoryInModule.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add MVC
+builder.Services.AddControllersWithViews();
+
+// ✅ Register EF Core with SQL Server
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+}
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=In}/{action=Index}/{id?}");
+
+app.Run();
+
+
+---
+
+⚙️ 5️⃣ Add Connection String
+
+🗂️ In your appsettings.json:
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SERVER_NAME;Database=InventoryDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+💡 Replace YOUR_SERVER_NAME with your SQL Server name (e.g., localhost\\SQLEXPRESS).
+
+
+---
+
+🎮 6️⃣ Controller
+
+🗂️ Controllers/InController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using InventoryInModule.Data;
+using InventoryInModule.Models;
+
+namespace InventoryInModule.Controllers
+{
+    public class InController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public InController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // List all transactions
+        public IActionResult Index()
+        {
+            // Include category details when loading transactions
+            var list = _context.InTransactions.Include(t => t.Category).ToList();
+            return View(list);
+        }
+
+        // Show the Create form
+        public IActionResult Create()
+        {
+            ViewBag.Categories = _context.Categories.ToList();
+            return View();
+        }
+
+        // Save form data to database
+        [HttpPost]
+        public IActionResult Create(InTransaction transaction)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.InTransactions.Add(transaction);
+                _context.SaveChanges();
+                return RedirectToAction("Index");
+            }
+
+            ViewBag.Categories = _context.Categories.ToList();
+            return View(transaction);
+        }
+    }
+}
+
+🧠 Explanation:
+
+Index() → loads all transactions with their category name.
+
+Create() (GET) → loads category dropdown.
+
+Create() (POST) → saves form data into the database.
+
+
+
+---
+
+🎨 7️⃣ Views
+
+Views/In/Create.cshtml
+
+@model InventoryInModule.Models.InTransaction
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+<h2>Add New Transaction</h2>
+
+<form asp-action="Create" method="post">
+    <div class="form-group mb-3">
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+
+    <div class="form-group mb-3">
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div>
+
+    <div class="form-group mb-3">
+        <label>Category</label>
+        <select asp-for="CategoryId" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "CategoryId", "CategoryName"))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+
+<a asp-action="Index" class="btn btn-secondary mt-2">Back to List</a>
+
+
+---
+
+Views/In/Index.cshtml
+
+@model IEnumerable<InventoryInModule.Models.InTransaction>
+
+<h2>Transactions List</h2>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Item Name</th>
+            <th>Quantity</th>
+            <th>Category</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.ItemName</td>
+                <td>@item.Quantity</td>
+                <td>@item.Category?.CategoryName</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-action="Create" class="btn btn-success">Add New</a>
+
+
+---
+
+⚙️ 8️⃣ (Optional) Stored Procedure Version
+
+If you prefer a stored procedure to insert data instead of EF .Add(),
+create this in SQL:
+
+CREATE PROCEDURE sp_AddInTransaction
+    @ItemName NVARCHAR(100),
+    @Quantity INT,
+    @CategoryId INT
+AS
+BEGIN
+    INSERT INTO tbl_intransactions (ItemName, Quantity, CategoryId)
+    VALUES (@ItemName, @Quantity, @CategoryId)
+END
+
+Then modify your POST action:
+
+[HttpPost]
+public IActionResult Create(InTransaction transaction)
+{
+    if (ModelState.IsValid)
+    {
+        _context.Database.ExecuteSqlRaw(
+            "EXEC sp_AddInTransaction @p0, @p1, @p2",
+            transaction.ItemName, transaction.Quantity, transaction.CategoryId);
+
+        return RedirectToAction("Index");
+    }
+
+    ViewBag.Categories = _context.Categories.ToList();
+    return View(transaction);
+}
+
+
+---
+
+🧠 Summary for Beginners
+
+Part	File	Purpose
+
+Database	SQL Tables	Holds data for Categories & Transactions
+Models	InTransaction.cs, Category.cs	Represent your tables
+DbContext	ApplicationDbContext.cs	Manages database connection
+Controller	InController.cs	Handles requests and logic
+Views	Create.cshtml, Index.cshtml	User interface pages
+Connection	Program.cs + appsettings.json	Tell EF where to connect
+
+
+
+---
+
+✅ Once done, run your project:
+
+dotnet run
+
+Then open the URL it shows (e.g., https://localhost:5001/In).
+
+You’ll be able to:
+
+Add new items with a category
+
+View the list of all transactions with their category name
+
+
+
+---
+
+Would you like me to add Edit and Delete features next (with category dropdown also)?
+
+** 0325
+
 Perfect — you’re now extending your In Module project to include a Category field!
 Let’s go step-by-step and make sure everything is beginner-friendly and clear 🧠
 
