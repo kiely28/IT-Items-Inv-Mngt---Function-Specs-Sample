@@ -1,0 +1,222 @@
+Absolutely 👍 Let’s create a simple “IN Module” project using ASP.NET Core MVC + SQL Server Stored Procedure — step by step.
+
+We’ll build a small Inventory “IN Transaction” where users can record items being received into the system.
+
+
+---
+
+🧩 PROJECT OVERVIEW
+
+Goal: Create a page where the user can input an item and quantity, then save to the database via a stored procedure.
+
+Example Table:
+
+tblInTransactions
+
+Column Name	Data Type	Description
+
+InID	INT (PK, IDENTITY)	Auto-generated primary key
+ItemName	NVARCHAR(100)	Name of item
+Quantity	INT	Quantity received
+DateIn	DATETIME	Transaction date
+
+
+
+---
+
+🛠️ STEP 1: Create SQL Table & Stored Procedure
+
+In SQL Server, run this:
+
+CREATE TABLE tblInTransactions (
+    InID INT IDENTITY(1,1) PRIMARY KEY,
+    ItemName NVARCHAR(100),
+    Quantity INT,
+    DateIn DATETIME DEFAULT GETDATE()
+);
+GO
+
+CREATE PROCEDURE sp_InsertInTransaction
+    @ItemName NVARCHAR(100),
+    @Quantity INT
+AS
+BEGIN
+    INSERT INTO tblInTransactions (ItemName, Quantity)
+    VALUES (@ItemName, @Quantity);
+END;
+GO
+
+
+---
+
+🖥️ STEP 2: Create ASP.NET Core MVC Project
+
+In Visual Studio or CLI:
+
+dotnet new mvc -n InventoryInModule
+cd InventoryInModule
+
+
+---
+
+⚙️ STEP 3: Add Connection String
+
+In appsettings.json:
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SERVER;Database=InventoryDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  }
+}
+
+
+---
+
+🧱 STEP 4: Create Model
+
+File: Models/InTransaction.cs
+
+namespace InventoryInModule.Models
+{
+    public class InTransaction
+    {
+        public int InID { get; set; }
+        public string ItemName { get; set; }
+        public int Quantity { get; set; }
+        public DateTime DateIn { get; set; }
+    }
+}
+
+
+---
+
+🧩 STEP 5: Create Controller
+
+File: Controllers/InController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using InventoryInModule.Models;
+using System.Data;
+
+namespace InventoryInModule.Controllers
+{
+    public class InController : Controller
+    {
+        private readonly IConfiguration _configuration;
+
+        public InController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
+        public IActionResult Index()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public IActionResult Index(InTransaction model)
+        {
+            if (ModelState.IsValid)
+            {
+                string connStr = _configuration.GetConnectionString("DefaultConnection");
+
+                using (SqlConnection conn = new SqlConnection(connStr))
+                {
+                    using (SqlCommand cmd = new SqlCommand("sp_InsertInTransaction", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@ItemName", model.ItemName);
+                        cmd.Parameters.AddWithValue("@Quantity", model.Quantity);
+                        conn.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+
+                ViewBag.Message = "Item successfully added!";
+                ModelState.Clear();
+            }
+
+            return View();
+        }
+    }
+}
+
+
+---
+
+🎨 STEP 6: Create View
+
+File: Views/In/Index.cshtml
+
+@model InventoryInModule.Models.InTransaction
+@{
+    ViewData["Title"] = "In Module";
+}
+
+<h2>In Transaction Entry</h2>
+
+<form asp-action="Index" method="post">
+    <div class="form-group">
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" required />
+    </div>
+    <div class="form-group">
+        <label>Quantity</label>
+        <input asp-for="Quantity" type="number" class="form-control" required />
+    </div>
+    <button type="submit" class="btn btn-primary mt-3">Save</button>
+</form>
+
+@if (ViewBag.Message != null)
+{
+    <div class="alert alert-success mt-3">@ViewBag.Message</div>
+}
+
+
+---
+
+🚀 STEP 7: Run the Project
+
+Press F5 or run:
+
+dotnet run
+
+Navigate to:
+
+https://localhost:xxxx/In
+
+Try adding an item and quantity.
+The record will be inserted into tblInTransactions via the stored procedure.
+
+
+
+---
+
+✅ Summary
+
+You’ve created:
+
+✅ SQL Table + Stored Procedure
+
+✅ Model (InTransaction)
+
+✅ Controller (InController)
+
+✅ View (Index.cshtml)
+
+✅ Connected everything using ADO.NET
+
+
+
+---
+
+Would you like me to extend this example to include:
+
+🔍 Viewing all “IN” transactions (list page)
+
+✏️ Editing or deleting records
+
+📦 Integration with an Items table (lookup dropdown)?
