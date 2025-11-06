@@ -1,3 +1,363 @@
+Perfect 👍 — let’s go step-by-step and explain everything clearly like a beginner-friendly tutorial.
+
+We’ll review the In Module project you just created using ASP.NET Core MVC + Entity Framework Core + Stored Procedure, and explain how each part works, why we use it, and how the data flows.
+
+
+---
+
+🧩 PROJECT OVERVIEW
+
+Goal:
+To create a simple Inventory “IN Transaction” system where you can:
+
+Input an item name and quantity
+
+Save it to a database using a stored procedure
+
+Use Entity Framework Core (EF Core) for the database connection
+
+
+
+---
+
+🧠 WHAT HAPPENS BEHIND THE SCENES
+
+Here’s the simple flow:
+
+(View) Index.cshtml  →  (Controller) InController.cs  →  (Database) SQL Server via Stored Procedure
+
+🧾 Step-by-step explanation:
+
+1. The user types an Item Name and Quantity in the web form (View).
+
+
+2. The Controller receives that data when the form is submitted.
+
+
+3. The Controller uses Entity Framework Core to connect to the SQL Server.
+
+
+4. The Controller executes a Stored Procedure that inserts the data into the database.
+
+
+5. A success message is displayed to the user.
+
+
+
+
+---
+
+🧱 STEP 1: The SQL Side
+
+1️⃣ Create the Table and Stored Procedure
+
+CREATE TABLE tblInTransactions (
+    InID INT IDENTITY(1,1) PRIMARY KEY,
+    ItemName NVARCHAR(100),
+    Quantity INT,
+    DateIn DATETIME DEFAULT GETDATE()
+);
+GO
+
+CREATE PROCEDURE sp_InsertInTransaction
+    @ItemName NVARCHAR(100),
+    @Quantity INT
+AS
+BEGIN
+    INSERT INTO tblInTransactions (ItemName, Quantity)
+    VALUES (@ItemName, @Quantity);
+END;
+GO
+
+💬 Explanation:
+
+tblInTransactions → your table to store incoming inventory.
+
+sp_InsertInTransaction → your stored procedure that inserts data into the table.
+
+IDENTITY(1,1) → automatically creates IDs like 1, 2, 3...
+
+DEFAULT GETDATE() → automatically stores the current date/time when inserting.
+
+
+
+---
+
+🧩 STEP 2: The Model — InTransaction.cs
+
+using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace InventoryInModule.Models
+{
+    public class InTransaction
+    {
+        [Key]                     // Marks InID as the primary key
+        public int InID { get; set; }
+
+        [Required]                // Must have a value (not null)
+        [StringLength(100)]       // Max 100 characters
+        public string ItemName { get; set; }
+
+        [Required]                // Must have a value
+        public int Quantity { get; set; }
+
+        public DateTime DateIn { get; set; }  // Stores the date/time of transaction
+    }
+}
+
+💬 Explanation:
+
+This class represents your table structure in C#.
+
+EF Core uses this model to understand what kind of data you’ll store.
+
+[Required] ensures the user must fill in those fields before saving.
+
+
+
+---
+
+🧱 STEP 3: Database Context — ApplicationDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using InventoryInModule.Models;
+
+namespace InventoryInModule.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        // Constructor to accept options (like connection string)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        // Represent the table in code
+        public DbSet<InTransaction> InTransactions { get; set; }
+    }
+}
+
+💬 Explanation:
+
+DbContext is a bridge between your code and your SQL database.
+
+DbSet<InTransaction> represents the tblInTransactions table.
+
+EF Core uses this to send and receive data from SQL Server.
+
+
+
+---
+
+⚙️ STEP 4: Program.cs (Database Connection)
+
+using InventoryInModule.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add MVC services
+builder.Services.AddControllersWithViews();
+
+// Connect EF Core to SQL Server
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var app = builder.Build();
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
+
+// Set default controller
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=In}/{action=Index}/{id?}");
+
+app.Run();
+
+💬 Explanation:
+
+Registers EF Core (ApplicationDbContext) so controllers can use it.
+
+Reads connection string from appsettings.json.
+
+Tells the app to start with InController and Index view by default.
+
+
+
+---
+
+🧱 STEP 5: Controller — InController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using InventoryInModule.Data;
+using InventoryInModule.Models;
+using System.Threading.Tasks;
+
+namespace InventoryInModule.Controllers
+{
+    public class InController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public InController(ApplicationDbContext context)
+        {
+            _context = context;   // injects database connection
+        }
+
+        public IActionResult Index()
+        {
+            return View();        // show the form
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Index(InTransaction model)
+        {
+            if (ModelState.IsValid)
+            {
+                // Prepare parameters for stored procedure
+                var itemNameParam = new SqlParameter("@ItemName", model.ItemName);
+                var qtyParam = new SqlParameter("@Quantity", model.Quantity);
+
+                // Execute the stored procedure
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_InsertInTransaction @ItemName, @Quantity",
+                    itemNameParam, qtyParam
+                );
+
+                ViewBag.Message = "Item successfully added!";
+                ModelState.Clear(); // clears the form
+            }
+
+            return View();
+        }
+    }
+}
+
+💬 Explanation:
+
+Index() (GET) → Shows the input form.
+
+Index() (POST) → Handles the form submission.
+
+ExecuteSqlRawAsync() → Executes the stored procedure directly.
+
+ViewBag.Message → Sends success message to the View.
+
+
+
+---
+
+🎨 STEP 6: View — Views/In/Index.cshtml
+
+@model InventoryInModule.Models.InTransaction
+@{
+    ViewData["Title"] = "In Module";
+}
+
+<div class="container mt-4">
+    <h2>In Transaction Entry</h2>
+
+    <form asp-action="Index" method="post" class="mt-3">
+        <div class="mb-3">
+            <label asp-for="ItemName" class="form-label"></label>
+            <input asp-for="ItemName" class="form-control" required />
+        </div>
+        <div class="mb-3">
+            <label asp-for="Quantity" class="form-label"></label>
+            <input asp-for="Quantity" type="number" class="form-control" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+
+    @if (ViewBag.Message != null)
+    {
+        <div class="alert alert-success mt-3">@ViewBag.Message</div>
+    }
+</div>
+
+💬 Explanation:
+
+The form sends data to InController when you click Save.
+
+asp-for automatically binds form fields to the model (ItemName, Quantity).
+
+After saving, it shows a success message.
+
+
+
+---
+
+🔄 STEP 7: Data Flow Summary
+
+Here’s the whole picture 👇
+
+Step	Component	Action
+
+1	User enters data	Fills in item name + quantity
+2	View (Index.cshtml)	Sends data to Controller via POST
+3	Controller (InController.cs)	Validates data, calls stored procedure
+4	Database (sp_InsertInTransaction)	Inserts data into tblInTransactions
+5	Controller	Sends success message back
+6	View	Displays “Item successfully added!”
+
+
+
+---
+
+🧭 STEP 8: Run and Test
+
+1. Run the project:
+
+dotnet run
+
+
+2. Open your browser:
+
+https://localhost:xxxx/In
+
+
+3. Fill in:
+
+Item Name: Cable
+Quantity: 10
+
+
+4. Click Save
+✅ Your data is inserted into SQL via stored procedure!
+
+
+
+
+---
+
+💡 Key Takeaways for Beginners
+
+Concept	Meaning
+
+MVC	Model-View-Controller — separates logic, data, and UI.
+Model	Represents your data (ItemName, Quantity).
+Controller	Handles the logic and data flow between View and Model.
+View	The user interface (HTML form).
+EF Core	A tool that helps you talk to your database using C#.
+Stored Procedure	A saved SQL command that runs in your database.
+ApplicationDbContext	The class that connects EF Core to SQL Server.
+
+
+
+---
+
+Would you like me to add the next step — a “View All Transactions” page using Entity Framework (no stored procedure) so you can list all the saved records in a table?
+
+
+
+***
+
 Perfect — let’s level up your In Module project using ASP.NET Core MVC + Entity Framework Core + Stored Procedure ✅
 
 We’ll go step-by-step so you can run it easily in Visual Studio or VS Code.
