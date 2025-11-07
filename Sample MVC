@@ -1,3 +1,108 @@
+Excellent question — that error “Object reference not set to an instance of an object” at
+ViewData["Title"] = "Create In Transaction";
+usually means one of these 3 things happened 👇
+
+
+---
+
+🧭 1️⃣ The actual cause in your case
+
+In the view you have:
+
+@{
+    ViewData["Title"] = "Create In Transaction";
+}
+
+But if your controller’s Create() action returned null model or did not pass ViewBag.Categories, then something else (like the Razor layout) tried to access ViewData["Title"] before it existed.
+
+💡 The most common reason in this setup: You returned View(model) without reloading ViewBag.Categories when validation failed.
+
+
+---
+
+✅ Fix inside Controller
+
+Update your InController.cs like this:
+
+// GET
+public async Task<IActionResult> Create()
+{
+    ViewBag.Categories = await _context.GetCategoriesAsync();
+    return View(new InTransaction());
+}
+
+// POST
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(InTransaction model)
+{
+    if (ModelState.IsValid)
+    {
+        _context.InTransactions.Add(model);
+        await _context.SaveChangesAsync();
+        return RedirectToAction(nameof(Create));
+    }
+
+    // 🔧 Important: reload dropdown before returning view again
+    ViewBag.Categories = await _context.GetCategoriesAsync();
+    return View(model);
+}
+
+That ensures the ViewBag is always populated — even if validation fails.
+
+
+---
+
+🧭 2️⃣ Check your Layout (optional)
+
+If your _Layout.cshtml file uses:
+
+<title>@ViewData["Title"] - MyApp</title>
+
+and you don’t have this line:
+
+@{
+    ViewData["Title"] = "Create In Transaction";
+}
+
+then the layout will try to read ViewData["Title"] when it’s null → causing the error.
+✅ Just keep that line at the top of your view, as shown above.
+
+
+---
+
+🧭 3️⃣ Check Startup Configuration
+
+Make sure your MVC pipeline is set up correctly:
+
+builder.Services.AddControllersWithViews();
+
+and your default route points to:
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=In}/{action=Create}/{id?}");
+
+
+---
+
+✅ Summary of what to do
+
+Step	What to check	Fix
+
+1	ViewBag.Categories is always reloaded in both GET and POST	Add ViewBag.Categories = await _context.GetCategoriesAsync();
+2	View has @{ ViewData["Title"] = "Create In Transaction"; }	Keep this line
+3	_Layout.cshtml uses @ViewData["Title"] safely	Optional: wrap in null check if needed
+
+
+
+---
+
+Would you like me to show the corrected complete InController.cs + Create.cshtml combined (ready to copy-paste)?
+
+
+** 0850AM
+
 Perfect 👌 — below is a fully working mini project of your ASP.NET Core MVC “In Module” using Entity Framework Core, stored procedure for categories, and a dropdown that saves CategoryID.
 
 Everything is complete: ✅
