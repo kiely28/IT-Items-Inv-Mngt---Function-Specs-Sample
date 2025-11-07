@@ -1,3 +1,120 @@
+✅ Excellent — that error message tells us Entity Framework Core is trying to compose (e.g., filter, sort, or track) over a stored procedure call that returns a full result set (non-composable SQL).
+
+Let’s fix this properly and safely.
+
+
+---
+
+⚠️ Error explanation
+
+> System.InvalidOperationException: 'FromSql' or 'SqlQuery' was called with non-composable SQL ...'
+
+
+
+This happens when you use:
+
+_context.Categories.FromSqlRaw("EXEC sp_GetCategories").ToList();
+
+and EF tries to build an extra query on top (like adding .OrderBy, .Where, or tracking changes).
+
+Since EXEC sp_* is non-composable SQL, EF can’t mix its own SQL syntax with that stored procedure.
+
+
+---
+
+✅ Correct Fix Options
+
+Option 1: Use AsNoTracking()
+
+This is the simplest and safest way.
+
+In your controller actions where you use FromSqlRaw, add .AsNoTracking() before .ToListAsync() or .FirstOrDefaultAsync():
+
+Example – Fixed Index and Edit:
+
+// List
+var categories = await _context.Categories
+    .FromSqlRaw("EXEC sp_GetCategories")
+    .AsNoTracking()
+    .ToListAsync();
+
+Example – Fixed Edit
+
+var category = await _context.Categories
+    .FromSqlRaw("EXEC sp_GetCategoryById @CategoryID", 
+        new SqlParameter("@CategoryID", id))
+    .AsNoTracking()
+    .FirstOrDefaultAsync();
+
+✅ AsNoTracking() tells EF not to compose or track entities — perfect for stored procs returning read-only results.
+
+
+---
+
+Option 2: Call .AsEnumerable() (Alternative)
+
+If you really need to perform client-side filtering, call .AsEnumerable() after the stored procedure, so EF won’t try to push it to SQL Server.
+
+Example:
+
+var categories = _context.Categories
+    .FromSqlRaw("EXEC sp_GetCategories")
+    .AsEnumerable()
+    .Where(c => c.CategoryName.StartsWith("A"))
+    .ToList();
+
+But usually, you won’t need this for simple CRUD.
+
+
+---
+
+Option 3: Use Database.ExecuteSqlRawAsync for Non-Query SPs
+
+You already did this correctly for INSERT, UPDATE, and DELETE.
+Keep using:
+
+await _context.Database.ExecuteSqlRawAsync("EXEC sp_UpdateCategory ...");
+
+That part is perfect.
+
+
+---
+
+✅ Final Working Example (Safe Version)
+
+Here’s your corrected Index and Edit action snippets:
+
+// INDEX
+public async Task<IActionResult> Index()
+{
+    var categories = await _context.Categories
+        .FromSqlRaw("EXEC sp_GetCategories")
+        .AsNoTracking()
+        .ToListAsync();
+    return View(categories);
+}
+
+// EDIT (GET)
+public async Task<IActionResult> Edit(int id)
+{
+    var category = await _context.Categories
+        .FromSqlRaw("EXEC sp_GetCategoryById @CategoryID", new SqlParameter("@CategoryID", id))
+        .AsNoTracking()
+        .FirstOrDefaultAsync();
+
+    if (category == null)
+        return NotFound();
+
+    return View(category);
+}
+
+
+---
+
+Would you like me to show a fully updated working version of the entire controller (CategoryController) with all the .AsNoTracking() fixes applied?
+
+**
+
 System.InvalidOperationException: ''FromSql' or 'SqlQuery' was called with non-composable SQL and with a query composing over it. Consider calling 'AsEnumerable' after the method to perform the composition on the client side.'
 
 
