@@ -1,3 +1,8 @@
+System.InvalidOperationException: ''FromSql' or 'SqlQuery' was called with non-composable SQL and with a query composing over it. Consider calling 'AsEnumerable' after the method to perform the composition on the client side.'
+
+
+**
+
 Sure 👍 Let’s build a complete CRUD sample for tbl_category using ASP.NET Core MVC + SQL Server Stored Procedures — clean and ready to run.
 
 We’ll go step by step:
