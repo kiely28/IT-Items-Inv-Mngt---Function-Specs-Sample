@@ -1,3 +1,352 @@
+Perfect 👌 — below is a fully working mini project of your ASP.NET Core MVC “In Module” using Entity Framework Core, stored procedure for categories, and a dropdown that saves CategoryID.
+
+Everything is complete: ✅
+Model + Category + DbContext + Controller + View + Stored Procedure.
+
+
+---
+
+🗂️ Project Structure
+
+InventoryInModule/
+│
+├── Controllers/
+│   └── InController.cs
+│
+├── Data/
+│   └── ApplicationDbContext.cs
+│
+├── Models/
+│   ├── InTransaction.cs
+│   └── Category.cs
+│
+├── Views/
+│   └── In/
+│       └── Create.cshtml
+│
+├── appsettings.json
+└── Program.cs
+
+
+---
+
+🧱 SQL: Table and Stored Procedure
+
+Run this in SQL Server Management Studio (SSMS):
+
+-- Category table
+CREATE TABLE tbl_category (
+    CategoryID INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName NVARCHAR(100)
+);
+
+INSERT INTO tbl_category (CategoryName) VALUES ('Cable');
+INSERT INTO tbl_category (CategoryName) VALUES ('Connector');
+INSERT INTO tbl_category (CategoryName) VALUES ('Device');
+
+-- In Transaction table
+CREATE TABLE tblInTransactions (
+    InID INT IDENTITY(1,1) PRIMARY KEY,
+    ItemName NVARCHAR(100),
+    Quantity INT,
+    DateIn DATETIME,
+    CategoryID INT NULL,
+    FOREIGN KEY (CategoryID) REFERENCES tbl_category(CategoryID)
+);
+
+-- Stored procedure to fetch categories
+CREATE PROCEDURE sp_GetCategories
+AS
+BEGIN
+    SELECT CategoryID, CategoryName
+    FROM tbl_category
+    ORDER BY CategoryName;
+END;
+
+
+---
+
+📄 Models
+
+✅ Models/Category.cs
+
+namespace InventoryInModule.Models
+{
+    public class Category
+    {
+        public int CategoryID { get; set; }
+        public string CategoryName { get; set; }
+    }
+}
+
+
+---
+
+✅ Models/InTransaction.cs
+
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace InventoryInModule.Models
+{
+    public class InTransaction
+    {
+        [Key]
+        public int InID { get; set; }
+
+        [Required]
+        [StringLength(100)]
+        public string ItemName { get; set; }
+
+        [Required]
+        public int Quantity { get; set; }
+
+        [Display(Name = "Received Date")]
+        public DateTime DateIn { get; set; }
+
+        // Foreign key to Category
+        [Display(Name = "Category")]
+        public int? CategoryID { get; set; }
+
+        [ForeignKey("CategoryID")]
+        public Category Category { get; set; }
+    }
+}
+
+
+---
+
+💾 Data Context
+
+✅ Data/ApplicationDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using InventoryInModule.Models;
+
+namespace InventoryInModule.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        // Tables
+        public DbSet<InTransaction> InTransactions { get; set; }
+        public DbSet<Category> Categories { get; set; }
+
+        // Stored procedure call
+        public async Task<List<Category>> GetCategoriesAsync()
+        {
+            return await Categories.FromSqlRaw("EXEC sp_GetCategories").ToListAsync();
+        }
+    }
+}
+
+
+---
+
+🧩 Controller
+
+✅ Controllers/InController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using InventoryInModule.Data;
+using InventoryInModule.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace InventoryInModule.Controllers
+{
+    public class InController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public InController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // =========================
+        // 1️⃣ GET: In/Create
+        // =========================
+        public async Task<IActionResult> Create()
+        {
+            var categories = await _context.GetCategoriesAsync();
+            ViewBag.Categories = categories;
+            return View();
+        }
+
+        // =========================
+        // 2️⃣ POST: In/Create
+        // =========================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(InTransaction model)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.InTransactions.Add(model);
+                await _context.SaveChangesAsync();
+                return RedirectToAction("Create"); // back to form
+            }
+
+            // reload dropdown if validation fails
+            ViewBag.Categories = await _context.GetCategoriesAsync();
+            return View(model);
+        }
+    }
+}
+
+
+---
+
+🖼️ View
+
+✅ Views/In/Create.cshtml
+
+@model InventoryInModule.Models.InTransaction
+
+@{
+    ViewData["Title"] = "Create In Transaction";
+}
+
+<h2>Create In Transaction</h2>
+
+<form asp-action="Create" method="post" class="mt-3">
+    <div class="form-group mb-3">
+        <label asp-for="CategoryID"></label>
+        <select asp-for="CategoryID" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "CategoryID", "CategoryName"))">
+            <option value="">-- Select Category --</option>
+        </select>
+        <span asp-validation-for="CategoryID" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="ItemName"></label>
+        <input asp-for="ItemName" class="form-control" />
+        <span asp-validation-for="ItemName" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="Quantity"></label>
+        <input asp-for="Quantity" class="form-control" />
+        <span asp-validation-for="Quantity" class="text-danger"></span>
+    </div>
+
+    <div class="form-group mb-3">
+        <label asp-for="DateIn"></label>
+        <input asp-for="DateIn" type="date" class="form-control" />
+        <span asp-validation-for="DateIn" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}
+
+
+---
+
+⚙️ Program.cs (Register DbContext)
+
+Make sure your Program.cs has:
+
+using InventoryInModule.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services
+builder.Services.AddControllersWithViews();
+
+// Add DbContext + SQL Server connection
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var app = builder.Build();
+
+// Middlewares
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+}
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=In}/{action=Create}/{id?}");
+
+app.Run();
+
+
+---
+
+⚙️ appsettings.json (Connection String)
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SERVER_NAME;Database=InventoryInDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+🧠 Replace YOUR_SERVER_NAME with your actual SQL Server name (like localhost\\SQLEXPRESS or your instance name).
+
+
+---
+
+✅ How It Works (Beginner Explanation)
+
+Step	Component	Purpose
+
+1️⃣	sp_GetCategories	SQL stored procedure that fetches dropdown data
+2️⃣	Category.cs	Model to map SQL results to C#
+3️⃣	ApplicationDbContext	Manages database connection and executes stored procedure
+4️⃣	InController	Fetches category list, displays form, saves form data
+5️⃣	Create.cshtml	View showing dropdown + form fields
+6️⃣	Program.cs	Registers EF Core + connection string
+
+
+When you open /In/Create:
+
+1. Controller calls stored procedure sp_GetCategories.
+
+
+2. Data is stored in ViewBag.Categories.
+
+
+3. The View binds it into a dropdown.
+
+
+4. You fill up form → Submit.
+
+
+5. Data is saved into tblInTransactions.
+
+
+
+
+---
+
+Would you like me to extend this sample to include a simple Index View (list all InTransactions) next — showing category name (via join)?
+
+
+** 0818
+
+
 Nice catch — that error means your C# model (InTransaction) doesn't have a CategoryID property but your view or controller is trying to use it. Fixing it is straightforward: add the CategoryID property to the model and update the database (either with EF Migrations or a direct SQL ALTER). I’ll give you step-by-step code + the DB changes and also show how to handle the stored procedure case (because earlier we used stored procedures for some ops).
 
 
