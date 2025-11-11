@@ -1,3 +1,369 @@
+Perfect 👍 Let’s build a complete working sample CRUD for tbl_category using ASP.NET Core MVC 8, Entity Framework Core 8, and Stored Procedures in SQL Server — step-by-step and production-ready.
+
+
+---
+
+⚙️ Project Setup
+
+1. Create the Database and Stored Procedures
+
+Run this in SQL Server Management Studio (SSMS):
+
+CREATE DATABASE InventoryDB;
+GO
+USE InventoryDB;
+GO
+
+CREATE TABLE tbl_category (
+    CategoryId INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName NVARCHAR(100) NOT NULL,
+    Description NVARCHAR(255) NULL
+);
+GO
+
+-- Stored Procedures
+CREATE PROCEDURE sp_GetAllCategories
+AS
+BEGIN
+    SELECT * FROM tbl_category ORDER BY CategoryId DESC;
+END
+GO
+
+CREATE PROCEDURE sp_GetCategoryById
+    @CategoryId INT
+AS
+BEGIN
+    SELECT * FROM tbl_category WHERE CategoryId = @CategoryId;
+END
+GO
+
+CREATE PROCEDURE sp_InsertCategory
+    @CategoryName NVARCHAR(100),
+    @Description NVARCHAR(255)
+AS
+BEGIN
+    INSERT INTO tbl_category (CategoryName, Description)
+    VALUES (@CategoryName, @Description);
+END
+GO
+
+CREATE PROCEDURE sp_UpdateCategory
+    @CategoryId INT,
+    @CategoryName NVARCHAR(100),
+    @Description NVARCHAR(255)
+AS
+BEGIN
+    UPDATE tbl_category
+    SET CategoryName = @CategoryName,
+        Description = @Description
+    WHERE CategoryId = @CategoryId;
+END
+GO
+
+CREATE PROCEDURE sp_DeleteCategory
+    @CategoryId INT
+AS
+BEGIN
+    DELETE FROM tbl_category WHERE CategoryId = @CategoryId;
+END
+GO
+
+
+---
+
+2. Create the ASP.NET Core MVC Project
+
+In terminal or Visual Studio:
+
+dotnet new mvc -n CategoryCRUDApp
+cd CategoryCRUDApp
+
+Install EF Core packages:
+
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add package Microsoft.EntityFrameworkCore.Tools
+
+
+---
+
+3. Configure appsettings.json
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SERVER_NAME;Database=InventoryDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+
+---
+
+4. Create Model → Models/Category.cs
+
+namespace CategoryCRUDApp.Models
+{
+    public class Category
+    {
+        public int CategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+    }
+}
+
+
+---
+
+5. Create DbContext → Data/AppDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using CategoryCRUDApp.Models;
+
+namespace CategoryCRUDApp.Data
+{
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<Category> Categories { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Category>().ToTable("tbl_category");
+        }
+    }
+}
+
+
+---
+
+6. Register DbContext in Program.cs
+
+using CategoryCRUDApp.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllersWithViews();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+}
+
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Category}/{action=Index}/{id?}");
+
+app.Run();
+
+
+---
+
+7. Create Controller → Controllers/CategoryController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using CategoryCRUDApp.Data;
+using CategoryCRUDApp.Models;
+
+namespace CategoryCRUDApp.Controllers
+{
+    public class CategoryController : Controller
+    {
+        private readonly AppDbContext _context;
+
+        public CategoryController(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        // READ
+        public async Task<IActionResult> Index()
+        {
+            var categories = await _context.Categories
+                .FromSqlRaw("EXEC sp_GetAllCategories")
+                .ToListAsync();
+            return View(categories);
+        }
+
+        // CREATE - GET
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // CREATE - POST
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Category category)
+        {
+            if (ModelState.IsValid)
+            {
+                var parameters = new[]
+                {
+                    new SqlParameter("@CategoryName", category.CategoryName),
+                    new SqlParameter("@Description", (object?)category.Description ?? DBNull.Value)
+                };
+
+                await _context.Database.ExecuteSqlRawAsync("EXEC sp_InsertCategory @CategoryName, @Description", parameters);
+                return RedirectToAction(nameof(Index));
+            }
+            return View(category);
+        }
+
+        // EDIT - GET
+        public async Task<IActionResult> Edit(int id)
+        {
+            var param = new SqlParameter("@CategoryId", id);
+            var category = await _context.Categories
+                .FromSqlRaw("EXEC sp_GetCategoryById @CategoryId", param)
+                .FirstOrDefaultAsync();
+
+            if (category == null) return NotFound();
+            return View(category);
+        }
+
+        // EDIT - POST
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Category category)
+        {
+            if (ModelState.IsValid)
+            {
+                var parameters = new[]
+                {
+                    new SqlParameter("@CategoryId", category.CategoryId),
+                    new SqlParameter("@CategoryName", category.CategoryName),
+                    new SqlParameter("@Description", (object?)category.Description ?? DBNull.Value)
+                };
+
+                await _context.Database.ExecuteSqlRawAsync("EXEC sp_UpdateCategory @CategoryId, @CategoryName, @Description", parameters);
+                return RedirectToAction(nameof(Index));
+            }
+            return View(category);
+        }
+
+        // DELETE - GET
+        public async Task<IActionResult> Delete(int id)
+        {
+            var param = new SqlParameter("@CategoryId", id);
+            var category = await _context.Categories
+                .FromSqlRaw("EXEC sp_GetCategoryById @CategoryId", param)
+                .FirstOrDefaultAsync();
+
+            if (category == null) return NotFound();
+            return View(category);
+        }
+
+        // DELETE - POST
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int CategoryId)
+        {
+            var param = new SqlParameter("@CategoryId", CategoryId);
+            await _context.Database.ExecuteSqlRawAsync("EXEC sp_DeleteCategory @CategoryId", param);
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
+
+
+---
+
+8. Create Views (Razor)
+
+Views/Category/Index.cshtml
+
+@model IEnumerable<CategoryCRUDApp.Models.Category>
+
+@{
+    ViewData["Title"] = "Category List";
+}
+
+<h2>Categories</h2>
+<a asp-action="Create" class="btn btn-primary mb-3">Add Category</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Category Name</th>
+            <th>Description</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.CategoryId</td>
+            <td>@item.CategoryName</td>
+            <td>@item.Description</td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.CategoryId" class="btn btn-sm btn-warning">Edit</a>
+                <a asp-action="Delete" asp-route-id="@item.CategoryId" class="btn btn-sm btn-danger">Delete</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+Views/Category/Create.cshtml
+
+@model CategoryCRUDApp.Models.Category
+
+<h2>Add New Category</h2>
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label>Category Name</label>
+        <input asp-for="CategoryName" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Description</label>
+        <input asp-for="Description" class="form-control" />
+    </div>
+    <br />
+    <button type="submit" class="btn btn-success">Save</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+
+Views/Category/Edit.cshtml and Views/Category/Delete.cshtml
+
+👉 Same layout, just modify title/buttons accordingly.
+
+
+---
+
+✅ Done!
+You now have a fully functional CRUD for tbl_category using ASP.NET Core MVC 8, EF Core 8, and Stored Procedures — all without raw SQL strings scattered across code.
+
+
+---
+
+Would you like me to include Bootstrap + DataTables integration for a nicer table UI (search, sort, pagination)?
+
+***
+
+
 Perfect 👍 Let's build a complete CRUD for tbl_category using ASP.NET Core MVC 8 with a SQL Server stored procedure.
 
 We'll go step-by-step and I’ll give you full working code that you can copy-paste and run.
