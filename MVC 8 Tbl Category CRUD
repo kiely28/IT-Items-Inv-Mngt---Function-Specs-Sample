@@ -1,3 +1,5 @@
+https://youtu.be/_uSw8sh7xKs
+
 Excellent catch 👏 — that “Page not found: DeleteConfirmed” error happens because of a routing/action name mismatch between your form’s asp-action and the controller method name.
 
 Let’s fix that clearly and simply 👇
