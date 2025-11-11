@@ -1,3 +1,117 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using WebApplication1CRUDMVC.Data;
+using WebApplication1CRUDMVC.Models;
+
+namespace InventorySystem.Controllers
+{
+    public class CategoryController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public CategoryController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // READ ALL
+        public async Task<IActionResult> Index()
+        {
+            var categories = await _context.Categories
+                .FromSqlRaw("EXEC sp_GetAllCategories")
+                .ToListAsync();
+
+            return View(categories);
+        }
+
+        // CREATE (GET)
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // CREATE (POST)
+        [HttpPost]
+        public async Task<IActionResult> Create(Category category)
+        {
+            if (ModelState.IsValid)
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_AddCategory @CategoryName, @Description",
+                    new SqlParameter("@CategoryName", category.CategoryName),
+                    new SqlParameter("@Description", category.Description ?? (object)DBNull.Value)
+                );
+                return RedirectToAction(nameof(Index));
+            }
+            return View(category);
+        }
+
+        // EDIT (GET)
+        public async Task<IActionResult> Edit(int id)
+        {
+            //var category = await _context.Categories
+            //    .FromSqlRaw("EXEC sp_GetCategoryById @CategoryID", new SqlParameter("@CategoryID", id))
+            //    .FirstOrDefaultAsync();
+
+            var category = _context.Categories
+                .FromSqlRaw("EXEC sp_GetCategoryById @CategoryID", new SqlParameter("@CategoryID", id))
+                .AsEnumerable() // Client-side
+                .FirstOrDefault();
+
+
+            if (category == null) return NotFound();
+            return View(category);
+        }
+
+        // EDIT (POST)
+        [HttpPost]
+        public async Task<IActionResult> Edit(Category category)
+        {
+            if (ModelState.IsValid)
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_UpdateCategory @CategoryID, @CategoryName, @Description",
+                    new SqlParameter("@CategoryID", category.CategoryID),
+                    new SqlParameter("@CategoryName", category.CategoryName),
+                    new SqlParameter("@Description", category.Description ?? (object)DBNull.Value)
+                );
+                return RedirectToAction(nameof(Index));
+            }
+            return View(category);
+        }
+
+        // DELETE (GET)
+        public async Task<IActionResult> Delete(int id)
+        {
+            //var category = await _context.Categories
+            //    .FromSqlRaw("EXEC sp_GetCategoryById @CategoryID", new SqlParameter("@CategoryID", id))
+            //    .FirstOrDefaultAsync();
+
+            var category = _context.Categories
+                .FromSqlRaw("EXEC sp_GetCategoryById @CategoryID", new SqlParameter("@CategoryID", id))
+                .AsEnumerable() // Switch to client-side
+                .FirstOrDefault();
+
+            if (category == null) return NotFound();
+            return View(category);
+        }
+
+        // DELETE (POST)
+        [HttpPost, ActionName("Delete")]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC sp_DeleteCategory @CategoryID", new SqlParameter("@CategoryID", id)
+            );
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
+
+
+**
+
 https://youtu.be/_uSw8sh7xKs
 
 Excellent catch 👏 — that “Page not found: DeleteConfirmed” error happens because of a routing/action name mismatch between your form’s asp-action and the controller method name.
