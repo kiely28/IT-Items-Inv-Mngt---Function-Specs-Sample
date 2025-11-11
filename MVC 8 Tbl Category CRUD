@@ -1,3 +1,436 @@
+
+Perfect 👌 Let’s go step-by-step to create a beginner-friendly CRUD (Create, Read, Update, Delete) for tbl_Category using ASP.NET Core MVC 8, Entity Framework Core, and Stored Procedures in SQL Server.
+
+
+---
+
+🧩 Step 1: Create the Database and Table
+
+Open SQL Server Management Studio (SSMS) and run this script:
+
+CREATE DATABASE InventoryDB;
+GO
+USE InventoryDB;
+GO
+
+CREATE TABLE tbl_Category (
+    CategoryID INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName NVARCHAR(100) NOT NULL,
+    Description NVARCHAR(255)
+);
+GO
+
+
+---
+
+🧠 Step 2: Create Stored Procedures
+
+We’ll use stored procedures for all CRUD operations.
+
+-- 1. Insert
+CREATE PROCEDURE sp_AddCategory
+    @CategoryName NVARCHAR(100),
+    @Description NVARCHAR(255)
+AS
+BEGIN
+    INSERT INTO tbl_Category (CategoryName, Description)
+    VALUES (@CategoryName, @Description);
+END
+GO
+
+-- 2. Get all
+CREATE PROCEDURE sp_GetAllCategories
+AS
+BEGIN
+    SELECT * FROM tbl_Category;
+END
+GO
+
+-- 3. Get by ID
+CREATE PROCEDURE sp_GetCategoryById
+    @CategoryID INT
+AS
+BEGIN
+    SELECT * FROM tbl_Category WHERE CategoryID = @CategoryID;
+END
+GO
+
+-- 4. Update
+CREATE PROCEDURE sp_UpdateCategory
+    @CategoryID INT,
+    @CategoryName NVARCHAR(100),
+    @Description NVARCHAR(255)
+AS
+BEGIN
+    UPDATE tbl_Category
+    SET CategoryName = @CategoryName,
+        Description = @Description
+    WHERE CategoryID = @CategoryID;
+END
+GO
+
+-- 5. Delete
+CREATE PROCEDURE sp_DeleteCategory
+    @CategoryID INT
+AS
+BEGIN
+    DELETE FROM tbl_Category WHERE CategoryID = @CategoryID;
+END
+GO
+
+
+---
+
+🧱 Step 3: Create ASP.NET Core MVC 8 Project
+
+In Visual Studio 2022:
+
+1. Create → New Project
+
+
+2. Choose ASP.NET Core Web App (Model-View-Controller)
+
+
+3. Name it InventorySystem
+
+
+4. Choose:
+
+.NET 8.0
+
+Authentication: None
+
+Check “Use controllers with views”
+
+Uncheck “Use minimal APIs”
+
+
+
+
+
+---
+
+🗂 Step 4: Add Model
+
+Create a model in Models/Category.cs:
+
+namespace InventorySystem.Models
+{
+    public class Category
+    {
+        public int CategoryID { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+    }
+}
+
+
+---
+
+⚙️ Step 5: Setup Database Context
+
+Create file Data/ApplicationDbContext.cs:
+
+using InventorySystem.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace InventorySystem.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<Category> Categories { get; set; }
+    }
+}
+
+
+---
+
+🧩 Step 6: Configure Connection String
+
+In appsettings.json:
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SERVER_NAME;Database=InventoryDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+> ⚠️ Replace YOUR_SERVER_NAME with your SQL Server instance name.
+
+
+
+
+---
+
+🛠 Step 7: Register DbContext in Program.cs
+
+Add this line:
+
+using InventorySystem.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services
+builder.Services.AddControllersWithViews();
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var app = builder.Build();
+
+
+---
+
+🧮 Step 8: Create Controller
+
+Create a new controller: Controllers/CategoryController.cs
+
+using InventorySystem.Data;
+using InventorySystem.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+
+namespace InventorySystem.Controllers
+{
+    public class CategoryController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public CategoryController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // READ ALL
+        public async Task<IActionResult> Index()
+        {
+            var categories = await _context.Categories
+                .FromSqlRaw("EXEC sp_GetAllCategories")
+                .ToListAsync();
+
+            return View(categories);
+        }
+
+        // CREATE (GET)
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // CREATE (POST)
+        [HttpPost]
+        public async Task<IActionResult> Create(Category category)
+        {
+            if (ModelState.IsValid)
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_AddCategory @CategoryName, @Description",
+                    new SqlParameter("@CategoryName", category.CategoryName),
+                    new SqlParameter("@Description", category.Description ?? (object)DBNull.Value)
+                );
+                return RedirectToAction(nameof(Index));
+            }
+            return View(category);
+        }
+
+        // EDIT (GET)
+        public async Task<IActionResult> Edit(int id)
+        {
+            var category = await _context.Categories
+                .FromSqlRaw("EXEC sp_GetCategoryById @CategoryID", new SqlParameter("@CategoryID", id))
+                .FirstOrDefaultAsync();
+
+            if (category == null) return NotFound();
+            return View(category);
+        }
+
+        // EDIT (POST)
+        [HttpPost]
+        public async Task<IActionResult> Edit(Category category)
+        {
+            if (ModelState.IsValid)
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_UpdateCategory @CategoryID, @CategoryName, @Description",
+                    new SqlParameter("@CategoryID", category.CategoryID),
+                    new SqlParameter("@CategoryName", category.CategoryName),
+                    new SqlParameter("@Description", category.Description ?? (object)DBNull.Value)
+                );
+                return RedirectToAction(nameof(Index));
+            }
+            return View(category);
+        }
+
+        // DELETE (GET)
+        public async Task<IActionResult> Delete(int id)
+        {
+            var category = await _context.Categories
+                .FromSqlRaw("EXEC sp_GetCategoryById @CategoryID", new SqlParameter("@CategoryID", id))
+                .FirstOrDefaultAsync();
+
+            if (category == null) return NotFound();
+            return View(category);
+        }
+
+        // DELETE (POST)
+        [HttpPost, ActionName("Delete")]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC sp_DeleteCategory @CategoryID", new SqlParameter("@CategoryID", id)
+            );
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
+
+
+---
+
+🎨 Step 9: Create Views
+
+Right-click on Views/Category, add:
+
+Index.cshtml
+
+@model IEnumerable<InventorySystem.Models.Category>
+
+<h2>Category List</h2>
+<p><a asp-action="Create" class="btn btn-primary">Add Category</a></p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Category Name</th>
+            <th>Description</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model)
+{
+    <tr>
+        <td>@item.CategoryID</td>
+        <td>@item.CategoryName</td>
+        <td>@item.Description</td>
+        <td>
+            <a asp-action="Edit" asp-route-id="@item.CategoryID" class="btn btn-sm btn-warning">Edit</a>
+            <a asp-action="Delete" asp-route-id="@item.CategoryID" class="btn btn-sm btn-danger">Delete</a>
+        </td>
+    </tr>
+}
+    </tbody>
+</table>
+
+
+---
+
+Create.cshtml
+
+@model InventorySystem.Models.Category
+
+<h2>Add Category</h2>
+
+<form asp-action="Create">
+    <div class="form-group">
+        <label>Category Name</label>
+        <input asp-for="CategoryName" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Description</label>
+        <input asp-for="Description" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-success mt-2">Save</button>
+</form>
+
+
+---
+
+Edit.cshtml
+
+@model InventorySystem.Models.Category
+
+<h2>Edit Category</h2>
+
+<form asp-action="Edit">
+    <input type="hidden" asp-for="CategoryID" />
+    <div class="form-group">
+        <label>Category Name</label>
+        <input asp-for="CategoryName" class="form-control" />
+    </div>
+    <div class="form-group">
+        <label>Description</label>
+        <input asp-for="Description" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Update</button>
+</form>
+
+
+---
+
+Delete.cshtml
+
+@model InventorySystem.Models.Category
+
+<h2>Delete Category</h2>
+
+<div>
+    <p>Are you sure you want to delete <strong>@Model.CategoryName</strong>?</p>
+    <form asp-action="DeleteConfirmed">
+        <input type="hidden" asp-for="CategoryID" />
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+
+---
+
+🚀 Step 10: Run the App
+
+Press Ctrl + F5 to run.
+
+Go to /Category
+
+You can now Add, Edit, View, and Delete categories via stored procedures!
+
+
+
+---
+
+✅ Summary (Logic Recap)
+
+Operation	Stored Procedure	Method Used
+
+Create	sp_AddCategory	Database.ExecuteSqlRawAsync()
+Read All	sp_GetAllCategories	FromSqlRaw()
+Read by ID	sp_GetCategoryById	FromSqlRaw()
+Update	sp_UpdateCategory	Database.ExecuteSqlRawAsync()
+Delete	sp_DeleteCategory	Database.ExecuteSqlRawAsync()
+
+
+
+---
+
+Would you like me to add Bootstrap styling with DataTables (search/sort) next to make the UI more user-friendly?
+
+*** 1246
+
+
 Perfect 👌 Let’s go step-by-step to create a beginner-friendly CRUD (Create, Read, Update, Delete) for tbl_Category using ASP.NET Core MVC 8, Entity Framework Core, and Stored Procedures in SQL Server.
 
 
