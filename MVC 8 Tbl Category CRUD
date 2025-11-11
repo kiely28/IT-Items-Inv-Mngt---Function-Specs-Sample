@@ -1,3 +1,118 @@
+Excellent catch 👏 — that “Page not found: DeleteConfirmed” error happens because of a routing/action name mismatch between your form’s asp-action and the controller method name.
+
+Let’s fix that clearly and simply 👇
+
+
+---
+
+🔍 The Problem
+
+In your Delete.cshtml, you probably have this:
+
+<form asp-action="DeleteConfirmed">
+
+But your controller method is decorated like this:
+
+[HttpPost, ActionName("Delete")]
+public async Task<IActionResult> DeleteConfirmed(int id)
+
+That means:
+
+The method name is DeleteConfirmed
+
+But the action name (route) is “Delete” (because of [ActionName("Delete")])
+
+
+So when your form tries to post to /Category/DeleteConfirmed, it doesn’t exist (404 error).
+The MVC route is actually /Category/Delete.
+
+
+---
+
+✅ The Easiest Fix (Recommended)
+
+Change this line in Delete.cshtml:
+
+<form asp-action="DeleteConfirmed">
+
+👉 To:
+
+<form asp-action="Delete">
+
+Now your form will correctly post to the route /Category/Delete, which matches the [ActionName("Delete")] in your controller.
+
+
+---
+
+💡 Alternative Fix (Optional)
+
+If you want to keep asp-action="DeleteConfirmed" in your view,
+then change your controller to remove the ActionName attribute:
+
+[HttpPost]
+public async Task<IActionResult> DeleteConfirmed(int id)
+
+Both the method name and route will now match.
+
+
+---
+
+✅ Corrected Final Version (Recommended Setup)
+
+Controller:
+
+// GET: Delete
+public async Task<IActionResult> Delete(int id)
+{
+    var category = await _context.Categories
+        .FromSqlRaw("EXEC sp_GetCategoryById @CategoryID", new SqlParameter("@CategoryID", id))
+        .FirstOrDefaultAsync();
+
+    if (category == null) return NotFound();
+    return View(category);
+}
+
+// POST: Delete
+[HttpPost, ActionName("Delete")]
+public async Task<IActionResult> DeleteConfirmed(int id)
+{
+    await _context.Database.ExecuteSqlRawAsync(
+        "EXEC sp_DeleteCategory @CategoryID", new SqlParameter("@CategoryID", id)
+    );
+    return RedirectToAction(nameof(Index));
+}
+
+Delete.cshtml:
+
+@model InventorySystem.Models.Category
+
+<h2>Delete Category</h2>
+
+<p>Are you sure you want to delete <strong>@Model.CategoryName</strong>?</p>
+
+<form asp-action="Delete">
+    <input type="hidden" asp-for="CategoryID" />
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+</form>
+
+
+---
+
+🔧 Why This Works
+
+[ActionName("Delete")] tells MVC:
+“Even though the method is called DeleteConfirmed, treat it as if its URL is /Delete.”
+
+The form must post to /Delete to match that.
+
+
+
+---
+
+Would you like me to show how to add a delete confirmation modal popup (instead of redirecting to a new page) using Bootstrap? It’s cleaner for modern UI.
+
+**
 
 Perfect 👌 Let’s go step-by-step to create a beginner-friendly CRUD (Create, Read, Update, Delete) for tbl_Category using ASP.NET Core MVC 8, Entity Framework Core, and Stored Procedures in SQL Server.
 
