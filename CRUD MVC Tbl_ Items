@@ -1,3 +1,7 @@
+InvalidOperationException: 'FromSql' or 'SqlQuery' was called with non-composable SQL and with a query composing over it. Consider calling 'AsEnumerable' after the method to perform the composition on the client side.
+
+**
+
 Perfect 👍 — Let’s go step-by-step and make a beginner-friendly CRUD (Create, Read, Update, Delete) example for your IT Item Inventory Management using:
 
 ASP.NET Core MVC 8
