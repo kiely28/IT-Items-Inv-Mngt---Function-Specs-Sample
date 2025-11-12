@@ -1,3 +1,111 @@
+Excellent catch 💡—that’s a very common EF Core error when using FromSqlRaw with stored procedures that return results.
+
+Let’s go step by step to fix it cleanly and clearly.
+
+
+---
+
+🧭 Why the error happens
+
+The error:
+
+> InvalidOperationException: 'FromSql' or 'SqlQuery' was called with non-composable SQL and with a query composing over it.
+
+
+
+appears when EF Core tries to “compose” a query on top of a stored procedure — for example when you use:
+
+await _context.Items
+    .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+    .FirstOrDefaultAsync();
+
+The .FirstOrDefaultAsync() tries to compose further SQL on top of EXEC, and stored procedures are non-composable.
+
+
+---
+
+✅ Correct Fix
+
+You can fix this by forcing EF to execute and materialize the result before applying LINQ methods, using AsEnumerable().
+
+So replace your line with this:
+
+var item = _context.Items
+    .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+    .AsEnumerable() // <---- FIX
+    .FirstOrDefault();
+
+This will first execute the stored procedure, get the data into memory,
+and then FirstOrDefault() works on the C# side (client-side enumeration).
+
+
+---
+
+🧩 Updated Sections
+
+In your Edit (GET):
+
+public async Task<IActionResult> Edit(int id)
+{
+    var item = _context.Items
+        .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+        .AsEnumerable()
+        .FirstOrDefault();
+
+    if (item == null)
+        return NotFound();
+
+    return View(item);
+}
+
+In your Delete (GET):
+
+public async Task<IActionResult> Delete(int id)
+{
+    var item = _context.Items
+        .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+        .AsEnumerable()
+        .FirstOrDefault();
+
+    if (item == null)
+        return NotFound();
+
+    return View(item);
+}
+
+
+---
+
+🧠 Quick Summary
+
+Problem	Reason	Fix
+
+InvalidOperationException with FromSqlRaw	EF Core tries to compose query over stored procedure	Add .AsEnumerable() before LINQ (e.g., FirstOrDefault())
+
+
+
+---
+
+✅ Optional: Safer Async Version
+
+If you want to keep it async-style, you can also do:
+
+var item = await Task.Run(() =>
+    _context.Items
+        .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+        .AsEnumerable()
+        .FirstOrDefault()
+);
+
+That keeps your controller fully asynchronous.
+
+
+---
+
+Would you like me to give you a clean full controller code (updated) with this fix and some small best-practice improvements (like proper validation and error handling)?
+
+**
+
 InvalidOperationException: 'FromSql' or 'SqlQuery' was called with non-composable SQL and with a query composing over it. Consider calling 'AsEnumerable' after the method to perform the composition on the client side.
 
 **
