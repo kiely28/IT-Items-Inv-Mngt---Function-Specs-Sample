@@ -1,3 +1,340 @@
+Excellent step forward 👏 — you’re now connecting tbl_Item and tbl_Category, which is how real inventory systems work!
+
+Let’s walk through this step-by-step in your ASP.NET Core MVC + EF Core + Stored Procedure setup.
+
+
+---
+
+🎯 Goal
+
+When creating or editing an Item,
+you want to populate the “Category” dropdown from the tbl_Category table.
+
+
+---
+
+🧱 1. SQL Setup
+
+Create tbl_Category:
+
+CREATE TABLE tbl_Category (
+    CategoryID INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName NVARCHAR(100)
+);
+
+Insert some sample data:
+
+INSERT INTO tbl_Category (CategoryName)
+VALUES ('Laptop'), ('Monitor'), ('Keyboard'), ('Mouse'), ('Cable');
+
+
+---
+
+⚙️ 2. Add Model
+
+In Models/Category.cs:
+
+namespace ITItemInventory.Models
+{
+    public class Category
+    {
+        public int CategoryID { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+    }
+}
+
+
+---
+
+🧩 3. Update Item Model
+
+In Models/Item.cs, replace your Category string property
+with a proper foreign key relationship:
+
+namespace ITItemInventory.Models
+{
+    public class Item
+    {
+        public int ItemID { get; set; }
+        public string ItemName { get; set; } = string.Empty;
+        public int CategoryID { get; set; }   // FK
+        public int Quantity { get; set; }
+        public string Status { get; set; } = string.Empty;
+
+        // Navigation property (optional)
+        public Category? Category { get; set; }
+    }
+}
+
+
+---
+
+🧠 4. Modify SQL Stored Procedures
+
+You’ll now store the CategoryID instead of a text name.
+
+✅ Update your tbl_Item definition
+
+CREATE TABLE tbl_Item (
+    ItemID INT IDENTITY(1,1) PRIMARY KEY,
+    ItemName NVARCHAR(100),
+    CategoryID INT,
+    Quantity INT,
+    Status NVARCHAR(20),
+    FOREIGN KEY (CategoryID) REFERENCES tbl_Category(CategoryID)
+);
+
+
+---
+
+🧮 Update your stored procedures
+
+Insert
+
+CREATE OR ALTER PROCEDURE sp_InsertItem
+    @ItemName NVARCHAR(100),
+    @CategoryID INT,
+    @Quantity INT,
+    @Status NVARCHAR(20)
+AS
+BEGIN
+    INSERT INTO tbl_Item (ItemName, CategoryID, Quantity, Status)
+    VALUES (@ItemName, @CategoryID, @Quantity, @Status);
+END;
+
+Update
+
+CREATE OR ALTER PROCEDURE sp_UpdateItem
+    @ItemID INT,
+    @ItemName NVARCHAR(100),
+    @CategoryID INT,
+    @Quantity INT,
+    @Status NVARCHAR(20)
+AS
+BEGIN
+    UPDATE tbl_Item
+    SET ItemName = @ItemName,
+        CategoryID = @CategoryID,
+        Quantity = @Quantity,
+        Status = @Status
+    WHERE ItemID = @ItemID;
+END;
+
+Get All (Join Category)
+
+CREATE OR ALTER PROCEDURE sp_GetAllItems
+AS
+BEGIN
+    SELECT i.ItemID, i.ItemName, i.Quantity, i.Status, 
+           c.CategoryID, c.CategoryName
+    FROM tbl_Item i
+    INNER JOIN tbl_Category c ON i.CategoryID = c.CategoryID
+    ORDER BY i.ItemID DESC;
+END;
+
+Get By ID
+
+CREATE OR ALTER PROCEDURE sp_GetItemById
+    @ItemID INT
+AS
+BEGIN
+    SELECT i.ItemID, i.ItemName, i.Quantity, i.Status, 
+           c.CategoryID, c.CategoryName
+    FROM tbl_Item i
+    INNER JOIN tbl_Category c ON i.CategoryID = c.CategoryID
+    WHERE i.ItemID = @ItemID;
+END;
+
+
+---
+
+⚙️ 5. Update EF Core Context
+
+In ApplicationDbContext.cs, add the new table:
+
+public DbSet<Category> Categories { get; set; }
+
+
+---
+
+🧩 6. Update Controller (ItemController)
+
+We’ll load categories in ViewBag to populate a dropdown.
+
+Add this helper method:
+
+private void LoadCategories()
+{
+    ViewBag.Categories = _context.Categories
+        .FromSqlRaw("SELECT * FROM tbl_Category")
+        .AsEnumerable()
+        .ToList();
+}
+
+
+---
+
+Update Create GET:
+
+public IActionResult Create()
+{
+    LoadCategories();
+    return View();
+}
+
+Update Create POST:
+
+[HttpPost]
+public async Task<IActionResult> Create(Item item)
+{
+    if (ModelState.IsValid)
+    {
+        await _context.Database.ExecuteSqlRawAsync(
+            "EXEC sp_InsertItem @ItemName, @CategoryID, @Quantity, @Status",
+            new SqlParameter("@ItemName", item.ItemName),
+            new SqlParameter("@CategoryID", item.CategoryID),
+            new SqlParameter("@Quantity", item.Quantity),
+            new SqlParameter("@Status", item.Status)
+        );
+        return RedirectToAction(nameof(Index));
+    }
+
+    LoadCategories();
+    return View(item);
+}
+
+
+---
+
+Update Edit GET:
+
+public IActionResult Edit(int id)
+{
+    var item = _context.Items
+        .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+        .AsEnumerable()
+        .FirstOrDefault();
+
+    if (item == null)
+        return NotFound();
+
+    LoadCategories();
+    return View(item);
+}
+
+
+---
+
+🧾 7. Update Views
+
+🧩 Create.cshtml
+
+@model ITItemInventory.Models.Item
+
+<h2>Create Item</h2>
+
+<form asp-action="Create">
+    <div>
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryID" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "CategoryID", "CategoryName"))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div>
+
+    <div>
+        <label>Status</label>
+        <input asp-for="Status" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+</form>
+
+
+---
+
+✏️ Edit.cshtml
+
+(same dropdown as Create)
+
+@model ITItemInventory.Models.Item
+
+<h2>Edit Item</h2>
+
+<form asp-action="Edit">
+    <input type="hidden" asp-for="ItemID" />
+    <div>
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryID" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "CategoryID", "CategoryName", Model.CategoryID))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+
+    <div>
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div>
+
+    <div>
+        <label>Status</label>
+        <input asp-for="Status" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-2">Update</button>
+</form>
+
+
+---
+
+✅ Result
+
+Now when you go to:
+
+/Item/Create → the Category dropdown is populated from tbl_Category.
+
+/Item/Edit → it shows the selected category correctly.
+
+
+
+---
+
+🧠 Summary
+
+Feature	Source	Description
+
+Categories	tbl_Category	Used to populate dropdown
+Items	tbl_Item	References CategoryID (FK)
+UI	Razor Dropdown	asp-items="SelectList(ViewBag.Categories, ...)"
+Controller	LoadCategories()	Gets category data using SQL
+
+
+
+---
+
+Would you like me to extend this next step so that:
+
+You can manage categories (CRUD for tbl_Category) with stored procedures too,
+
+and connect it cleanly to your existing Item module?
+
+**
+
 Excellent catch 💡—that’s a very common EF Core error when using FromSqlRaw with stored procedures that return results.
 
 Let’s go step by step to fix it cleanly and clearly.
