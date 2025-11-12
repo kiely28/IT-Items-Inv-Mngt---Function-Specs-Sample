@@ -1,0 +1,457 @@
+Perfect 👍 — Let’s go step-by-step and make a beginner-friendly CRUD (Create, Read, Update, Delete) example for your IT Item Inventory Management using:
+
+ASP.NET Core MVC 8
+
+Entity Framework Core
+
+Stored Procedures in SQL Server
+
+
+We’ll use a sample table named tbl_Item.
+
+
+---
+
+🧱 1. SQL Server Setup
+
+First, create your table and stored procedures.
+
+🧩 Table
+
+CREATE TABLE tbl_Item (
+    ItemID INT IDENTITY(1,1) PRIMARY KEY,
+    ItemName NVARCHAR(100),
+    Category NVARCHAR(50),
+    Quantity INT,
+    Status NVARCHAR(20)
+);
+
+
+---
+
+🧮 Stored Procedures
+
+1️⃣ Insert
+
+CREATE PROCEDURE sp_InsertItem
+    @ItemName NVARCHAR(100),
+    @Category NVARCHAR(50),
+    @Quantity INT,
+    @Status NVARCHAR(20)
+AS
+BEGIN
+    INSERT INTO tbl_Item (ItemName, Category, Quantity, Status)
+    VALUES (@ItemName, @Category, @Quantity, @Status);
+END;
+
+2️⃣ Update
+
+CREATE PROCEDURE sp_UpdateItem
+    @ItemID INT,
+    @ItemName NVARCHAR(100),
+    @Category NVARCHAR(50),
+    @Quantity INT,
+    @Status NVARCHAR(20)
+AS
+BEGIN
+    UPDATE tbl_Item
+    SET ItemName = @ItemName,
+        Category = @Category,
+        Quantity = @Quantity,
+        Status = @Status
+    WHERE ItemID = @ItemID;
+END;
+
+3️⃣ Delete
+
+CREATE PROCEDURE sp_DeleteItem
+    @ItemID INT
+AS
+BEGIN
+    DELETE FROM tbl_Item WHERE ItemID = @ItemID;
+END;
+
+4️⃣ Get All
+
+CREATE PROCEDURE sp_GetAllItems
+AS
+BEGIN
+    SELECT * FROM tbl_Item ORDER BY ItemID DESC;
+END;
+
+5️⃣ Get By ID
+
+CREATE PROCEDURE sp_GetItemById
+    @ItemID INT
+AS
+BEGIN
+    SELECT * FROM tbl_Item WHERE ItemID = @ItemID;
+END;
+
+
+---
+
+⚙️ 2. Create ASP.NET Core MVC Project
+
+In Visual Studio 2022 or CLI:
+
+dotnet new mvc -n ITItemInventory
+cd ITItemInventory
+
+
+---
+
+🧩 3. Add the Model
+
+In Models/Item.cs:
+
+namespace ITItemInventory.Models
+{
+    public class Item
+    {
+        public int ItemID { get; set; }
+        public string ItemName { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
+}
+
+
+---
+
+🧠 4. Setup EF Core Context
+
+Install packages (if not yet):
+
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+dotnet add package Microsoft.EntityFrameworkCore.Tools
+
+Then create Data/ApplicationDbContext.cs:
+
+using Microsoft.EntityFrameworkCore;
+using ITItemInventory.Models;
+
+namespace ITItemInventory.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<Item> Items { get; set; }
+
+        // This will not create table directly since we are using stored procedures
+    }
+}
+
+
+---
+
+⚙️ 5. Configure Connection String
+
+In appsettings.json:
+
+"ConnectionStrings": {
+  "DefaultConnection": "Server=YOUR_SERVER;Database=ITItemDB;Trusted_Connection=True;TrustServerCertificate=True;"
+}
+
+In Program.cs:
+
+using ITItemInventory.Data;
+using Microsoft.EntityFrameworkCore;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllersWithViews();
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+}
+app.UseStaticFiles();
+app.UseRouting();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Item}/{action=Index}/{id?}");
+
+app.Run();
+
+
+---
+
+🧩 6. Create Controller
+
+In Controllers/ItemController.cs:
+
+using ITItemInventory.Data;
+using ITItemInventory.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+
+namespace ITItemInventory.Controllers
+{
+    public class ItemController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public ItemController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // READ - List all items
+        public async Task<IActionResult> Index()
+        {
+            var items = await _context.Items
+                .FromSqlRaw("EXEC sp_GetAllItems")
+                .ToListAsync();
+            return View(items);
+        }
+
+        // CREATE - GET
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // CREATE - POST
+        [HttpPost]
+        public async Task<IActionResult> Create(Item item)
+        {
+            if (ModelState.IsValid)
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_InsertItem @ItemName, @Category, @Quantity, @Status",
+                    new SqlParameter("@ItemName", item.ItemName),
+                    new SqlParameter("@Category", item.Category),
+                    new SqlParameter("@Quantity", item.Quantity),
+                    new SqlParameter("@Status", item.Status)
+                );
+                return RedirectToAction(nameof(Index));
+            }
+            return View(item);
+        }
+
+        // EDIT - GET
+        public async Task<IActionResult> Edit(int id)
+        {
+            var item = await _context.Items
+                .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+                .FirstOrDefaultAsync();
+
+            if (item == null)
+                return NotFound();
+
+            return View(item);
+        }
+
+        // EDIT - POST
+        [HttpPost]
+        public async Task<IActionResult> Edit(Item item)
+        {
+            if (ModelState.IsValid)
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_UpdateItem @ItemID, @ItemName, @Category, @Quantity, @Status",
+                    new SqlParameter("@ItemID", item.ItemID),
+                    new SqlParameter("@ItemName", item.ItemName),
+                    new SqlParameter("@Category", item.Category),
+                    new SqlParameter("@Quantity", item.Quantity),
+                    new SqlParameter("@Status", item.Status)
+                );
+                return RedirectToAction(nameof(Index));
+            }
+            return View(item);
+        }
+
+        // DELETE - GET
+        public async Task<IActionResult> Delete(int id)
+        {
+            var item = await _context.Items
+                .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+                .FirstOrDefaultAsync();
+
+            if (item == null)
+                return NotFound();
+
+            return View(item);
+        }
+
+        // DELETE - POST
+        [HttpPost, ActionName("Delete")]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC sp_DeleteItem @ItemID",
+                new SqlParameter("@ItemID", id)
+            );
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
+
+
+---
+
+🧾 7. Create Views (Razor)
+
+Create folder Views/Item/ and add:
+
+➕ Create.cshtml
+
+@model ITItemInventory.Models.Item
+<h2>Create Item</h2>
+
+<form asp-action="Create">
+    <div>
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+    <div>
+        <label>Category</label>
+        <input asp-for="Category" class="form-control" />
+    </div>
+    <div>
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div>
+    <div>
+        <label>Status</label>
+        <input asp-for="Status" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+</form>
+
+
+---
+
+📋 Index.cshtml
+
+@model IEnumerable<ITItemInventory.Models.Item>
+<h2>Item List</h2>
+
+<a asp-action="Create" class="btn btn-success mb-2">Add Item</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>ItemID</th>
+            <th>Item Name</th>
+            <th>Category</th>
+            <th>Quantity</th>
+            <th>Status</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.ItemID</td>
+                <td>@item.ItemName</td>
+                <td>@item.Category</td>
+                <td>@item.Quantity</td>
+                <td>@item.Status</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.ItemID" class="btn btn-warning btn-sm">Edit</a>
+                    <a asp-action="Delete" asp-route-id="@item.ItemID" class="btn btn-danger btn-sm">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+---
+
+✏️ Edit.cshtml
+
+(Same as Create but with model data)
+
+@model ITItemInventory.Models.Item
+<h2>Edit Item</h2>
+
+<form asp-action="Edit">
+    <input type="hidden" asp-for="ItemID" />
+    <div>
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+    <div>
+        <label>Category</label>
+        <input asp-for="Category" class="form-control" />
+    </div>
+    <div>
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div>
+    <div>
+        <label>Status</label>
+        <input asp-for="Status" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Update</button>
+</form>
+
+
+---
+
+🗑️ Delete.cshtml
+
+@model ITItemInventory.Models.Item
+<h2>Delete Item</h2>
+
+<div>
+    <p>Are you sure you want to delete this item?</p>
+    <h4>@Model.ItemName</h4>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="ItemID" />
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+
+---
+
+✅ 8. Run the App
+
+1. Press F5 or run:
+
+dotnet run
+
+
+2. Visit:
+
+https://localhost:5001/Item
+
+
+
+You’ll see your IT items CRUD running via stored procedures.
+
+
+---
+
+🧠 Summary for Beginners
+
+Action	Procedure Used	Method	Description
+
+Index	sp_GetAllItems	GET	Displays all items
+Create	sp_InsertItem	POST	Adds new item
+Edit	sp_GetItemById, sp_UpdateItem	GET/POST	Updates existing item
+Delete	sp_GetItemById, sp_DeleteItem	GET/POST	Deletes selected item
+
+
+
+---
+
+Would you like me to make this version use Bootstrap + DataTables for a more professional look (like your attendance system)?
