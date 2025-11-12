@@ -1,3 +1,209 @@
+Excellent — you’re moving toward a smarter inventory design 👏
+
+Let’s enhance your setup so that when a user selects a Category in the Item Create form,
+👉 the Quantity field automatically shows the default quantity from tbl_Category,
+but only if the category’s UoM is "Pc".
+
+We’ll handle this both in SQL and ASP.NET Core MVC (Razor + jQuery).
+
+
+---
+
+⚙️ 1️⃣ Update SQL Table
+
+Modify tbl_Category:
+
+ALTER TABLE tbl_Category
+ADD Uom NVARCHAR(20),
+    Quantity INT;
+
+Example data:
+
+UPDATE tbl_Category
+SET Uom = 'Pc', Quantity = 1
+WHERE CategoryName IN ('Mouse', 'Keyboard');
+
+UPDATE tbl_Category
+SET Uom = 'Box', Quantity = 10
+WHERE CategoryName = 'Cable';
+
+UPDATE tbl_Category
+SET Uom = 'Unit', Quantity = 1
+WHERE CategoryName IN ('Laptop', 'Monitor');
+
+
+---
+
+🧩 2️⃣ Update Category Model
+
+In Models/Category.cs:
+
+namespace ITItemInventory.Models
+{
+    public class Category
+    {
+        public int CategoryID { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public string Uom { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+    }
+}
+
+
+---
+
+🧠 3️⃣ Update Data Context
+
+Your ApplicationDbContext.cs already has:
+
+public DbSet<Category> Categories { get; set; }
+
+No changes needed — EF will map the new columns automatically.
+
+
+---
+
+⚙️ 4️⃣ Update Controller: Load Categories
+
+You already have:
+
+private void LoadCategories()
+{
+    ViewBag.Categories = _context.Categories
+        .FromSqlRaw("SELECT * FROM tbl_Category")
+        .AsEnumerable()
+        .ToList();
+}
+
+✅ That’s still fine — it loads Uom and Quantity too.
+
+
+---
+
+🧩 5️⃣ Update Create View (Views/Item/Create.cshtml)
+
+We’ll use JavaScript/jQuery to detect the selected category and
+automatically fill the Quantity textbox if Uom == "Pc".
+
+Updated Create.cshtml
+
+@model ITItemInventory.Models.Item
+@{
+    var categories = (IEnumerable<ITItemInventory.Models.Category>)ViewBag.Categories;
+}
+
+<h2>Create Item</h2>
+
+<form asp-action="Create" id="itemForm">
+    <div class="form-group">
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+
+    <div class="form-group mt-2">
+        <label>Category</label>
+        <select asp-for="CategoryID" class="form-control" id="CategoryID"
+                asp-items="@(new SelectList(categories, "CategoryID", "CategoryName"))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+
+    <div class="form-group mt-2">
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" id="Quantity" />
+    </div>
+
+    <div class="form-group mt-2">
+        <label>Status</label>
+        <input asp-for="Status" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3">Save</button>
+</form>
+
+<!-- Add this JavaScript section -->
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Prepare category data (JSON from Razor)
+        var categories = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(categories));
+
+        $('#CategoryID').on('change', function () {
+            var selectedId = $(this).val();
+            var selectedCategory = categories.find(c => c.categoryID == selectedId);
+
+            if (selectedCategory) {
+                if (selectedCategory.uom.toLowerCase() === "pc") {
+                    // Automatically fill Quantity field with category's default quantity
+                    $('#Quantity').val(selectedCategory.quantity);
+                    $('#Quantity').prop('readonly', true);
+                } else {
+                    // Enable manual entry for non-"Pc" UoM
+                    $('#Quantity').val('');
+                    $('#Quantity').prop('readonly', false);
+                }
+            } else {
+                $('#Quantity').val('');
+                $('#Quantity').prop('readonly', false);
+            }
+        });
+    </script>
+}
+
+
+---
+
+🧮 How It Works
+
+1. When the page loads, it serializes your tbl_Category data to JSON.
+
+
+2. When the user selects a category:
+
+JavaScript checks its Uom.
+
+If Uom == "Pc", the Quantity textbox auto-fills with the category’s default Quantity and becomes readonly.
+
+Otherwise, the textbox clears and becomes editable.
+
+
+
+
+
+---
+
+✅ Example Behavior
+
+Category	UOM	Default Qty	Behavior
+
+Mouse	Pc	1	Auto-fill “1” and readonly
+Cable	Box	10	Quantity field empty and editable
+Laptop	Unit	1	Quantity editable
+
+
+
+---
+
+🧠 Summary
+
+Step	Description
+
+1	Added Uom and Quantity columns to tbl_Category
+2	Updated Category model
+3	Loaded category data to ViewBag
+4	Used jQuery to detect UOM type
+5	Automatically filled quantity if UOM = “Pc”
+
+
+
+---
+
+Would you like the Edit page (Edit.cshtml) to behave the same way —
+i.e. automatically show the default quantity and disable editing when Uom == "Pc"?
+
+**
+
+
 Excellent step forward 👏 — you’re now connecting tbl_Item and tbl_Category, which is how real inventory systems work!
 
 Let’s walk through this step-by-step in your ASP.NET Core MVC + EF Core + Stored Procedure setup.
