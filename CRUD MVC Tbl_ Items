@@ -1,3 +1,83 @@
+This error means EF Core is trying to query a table named Categories, but in your database the actual table name is:
+
+tbl_Category
+
+EF Core automatically pluralizes your model class (Category) into a table named Categories, unless you explicitly map it.
+
+That’s why the error appears during Save / Insert, because EF tries to hit Categories instead of tbl_Category.
+
+
+---
+
+✅ Fix: Add Table Mapping in OnModelCreating
+
+In your ApplicationDbContext.cs, add this inside OnModelCreating:
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    base.OnModelCreating(modelBuilder);
+
+    modelBuilder.Entity<Category>()
+        .ToTable("tbl_Category");
+
+    modelBuilder.Entity<Item>()
+        .ToTable("tbl_Item");
+}
+
+✔️ This tells EF Core to use tbl_Category instead of the default Categories.
+
+
+---
+
+🔍 Why It Happens
+
+Because you are using:
+
+Stored procedures for some operations
+
+EF Core tracking or queries for others
+
+
+When EF Core tries to insert, update, or select from Category, it assumes the table is named:
+
+Categories
+
+But SQL Server only has:
+
+tbl_Category
+
+So SQL Server returns error:
+
+Invalid object name 'Categories'
+
+
+---
+
+🧪 After Adding Mapping — REBUILD PROJECT
+
+Then test again. The error will disappear.
+
+
+---
+
+🚀 OPTIONAL (But Recommended)
+
+If your Item model also maps to a table named tbl_Item, add:
+
+modelBuilder.Entity<Item>()
+    .ToTable("tbl_Item");
+
+Otherwise EF Core will look for a table named Items.
+
+
+---
+
+👍 If you want, send me your full ApplicationDbContext.cs
+
+I can verify everything is mapped correctly.
+
+**
+
 Microsoft.Data.SqlClient.SqlException: 'Invalid object name 'Categories'.'
 
 
