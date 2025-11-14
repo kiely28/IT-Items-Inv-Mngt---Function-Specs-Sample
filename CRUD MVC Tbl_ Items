@@ -1,3 +1,7 @@
+No overload for method 'SqlQuery' takes 3 arguments
+
+**
+
 Below is a clean, beginner-friendly implementation that adds automatic Control No generation when saving an Item in ASP.NET Core MVC 8 + EF Core + Stored Procedures**, using your required format:
 
 > NT-AT-MMYY-###
