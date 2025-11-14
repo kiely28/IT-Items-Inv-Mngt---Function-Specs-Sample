@@ -1,0 +1,182 @@
+Item/Create.cshtml
+--
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+
+@model WebApplication2.Models.Item
+@{
+    var categories = (IEnumerable<WebApplication2.Models.Category>)ViewBag.Categories;
+}
+
+<h2>Create Item</h2>
+
+<form asp-action="Create">
+    <div>
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+    @* <div>
+        <label>Category</label>
+        <input asp-for="Category" class="form-control" />
+    </div> *@
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryID" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "CategoryID", "CategoryName"))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+    @* <div>
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div> *@
+    <div class="form-group mt-2">
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" id="Quantity" />
+    </div>
+
+    <div>
+        <label>Location</label>
+        <input asp-for="Status" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+</form>
+
+
+<!-- Add this JavaScript section -->
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Prepare category data (JSON from Razor)
+        var categories = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(categories));
+
+        $('#CategoryID').on('change', function () {
+            var selectedId = $(this).val();
+            var selectedCategory = categories.find(c => c.CategoryID == selectedId);
+
+            if (selectedCategory) {
+                if (selectedCategory.Uom.toLowerCase() === "pc") {
+                    // Automatically fill Quantity field with category's default quantity
+                    $('#Quantity').val(selectedCategory.Quantity);
+                    $('#Quantity').prop('readonly', true);
+                } else {
+                    // Enable manual entry for non-"Pc" UoM
+                    $('#Quantity').val('');
+                    $('#Quantity').prop('readonly', false);
+                }
+            } else {
+                $('#Quantity').val('');
+                $('#Quantity').prop('readonly', false);
+            }
+        });
+    </script>
+}
+--
+
+Delete.cshtml
+--
+
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+
+@model WebApplication2.Models.Item
+<h2>Delete Item</h2>
+
+<div>
+    <p>Are you sure you want to delete this item?</p>
+    <h4>@Model.ItemName</h4>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="ItemID" />
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+--
+Edit.cshtml
+--
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+
+@model WebApplication2.Models.Item
+<h2>Edit Item</h2>
+
+<form asp-action="Edit">
+    <input type="hidden" asp-for="ItemID" />
+    <div>
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+    @* <div>
+        <label>Category</label>
+        <input asp-for="Category" class="form-control" />
+    </div> *@
+
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryID" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "CategoryID", "CategoryName", Model.CategoryID))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+    <div>
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div>
+    <div>
+        <label>Status</label>
+        <input asp-for="Status" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Update</button>
+</form>
+--
+Index.cshtml
+--
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+
+@model IEnumerable<WebApplication2.Models.Item>
+<h2>Item List</h2>
+
+<a asp-action="Create" class="btn btn-primary mb-2">Add Item</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            @* <th>ItemID</th> *@
+            <th>Control No</th>
+            <th>Item Name</th>
+            @* <th>Category</th> *@
+            <th>Quantity</th>
+            <th>Location</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                @* <td>@item.ItemID</td> *@
+                <td>@item.ControlNo</td>
+                <td>@item.ItemName</td>
+                @* <td>@item.CategoryName</td> *@
+                <td>@item.Quantity</td>
+                <td>@item.Status</td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.ItemID" class="btn btn-warning btn-sm">Edit</a>
+                    <a asp-action="Delete" asp-route-id="@item.ItemID" class="btn btn-danger btn-sm">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
