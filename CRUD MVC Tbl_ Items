@@ -1,3 +1,5 @@
+'Category' does not contain a definition for 'CategoryCode' and no accessible extension method 'CategoryCode' accepting a first argument of type 'Category' could be found (are you missing a using directive or an assembly reference?)
+
 No overload for method 'SqlQuery' takes 3 arguments
 
 **
