@@ -1,3 +1,7 @@
+add a validity per item in tbl_category example 3yrs warranty for the save item in tbl_items
+
+**
+
 This error means EF Core is trying to query a table named Categories, but in your database the actual table name is:
 
 tbl_Category
