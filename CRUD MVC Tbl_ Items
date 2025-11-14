@@ -1,4 +1,100 @@
+That error means your stored procedure or SQL in FromSqlRaw is NOT returning the ControlNo column, but your Item model expects it.
 
+EF Core requires that all columns mapped in your Item model must exist in the SQL result set.
+
+
+---
+
+✅ Why the Error Happens
+
+Your Item model has:
+
+public string ControlNo { get; set; }
+
+But your stored procedure or your FromSqlRaw in:
+
+var items = await _context.Items
+    .FromSqlRaw("EXEC sp_GetItems")
+    .ToListAsync();
+
+Probably returns something like:
+
+SELECT ItemID, ItemName, CategoryID, Quantity, Status
+
+❌ Missing ControlNo → EF Core throws error.
+
+
+---
+
+✅ Fix: Add ControlNo to your SQL / Stored Procedure
+
+If you are using sp_GetItems, update it:
+
+CREATE OR ALTER PROCEDURE sp_GetItems
+AS
+BEGIN
+    SELECT 
+        ItemID,
+        ItemName,
+        CategoryID,
+        Quantity,
+        Status,
+        ControlNo   -- ✅ MUST be included
+    FROM tbl_Item;
+END
+
+
+---
+
+🔍 Or if you use a custom SELECT in FromSqlRaw, fix it:
+
+Before (wrong):
+
+.FromSqlRaw("SELECT ItemID, ItemName, CategoryID, Quantity, Status FROM tbl_Item")
+
+After (correct):
+
+.FromSqlRaw("SELECT ItemID, ItemName, CategoryID, Quantity, Status, ControlNo FROM tbl_Item")
+
+
+---
+
+⚠️ Important: Column Names Must Match Model Properties
+
+Your SQL must return:
+
+SQL Column	Model Property
+
+ItemID	ItemID
+ItemName	ItemName
+CategoryID	CategoryID
+Quantity	Quantity
+Status	Status
+ControlNo	ControlNo
+
+
+If one is missing, EF Core will throw this exact error:
+
+> The required column '___' was not present in the results of a 'FromSql' operation
+
+
+
+
+---
+
+🎯 Corrected Code Snippet
+
+var items = await _context.Items
+    .FromSqlRaw("SELECT ItemID, ItemName, CategoryID, Quantity, Status, ControlNo FROM tbl_Item")
+    .AsNoTracking()
+    .ToListAsync();
+
+
+---
+
+✔️ After you update your SQL to include ControlNo, the error will disappear.
+
+If you want, send me your sp_GetItems or your FromSqlRaw query, and I will correct it 100%.
 
 **
 
