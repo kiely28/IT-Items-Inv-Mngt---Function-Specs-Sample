@@ -1,3 +1,8 @@
+Microsoft.Data.SqlClient.SqlException: 'Invalid object name 'Categories'.'
+
+
+**
+
 That error means your stored procedure or SQL in FromSqlRaw is NOT returning the ControlNo column, but your Item model expects it.
 
 EF Core requires that all columns mapped in your Item model must exist in the SQL result set.
