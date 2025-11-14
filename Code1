@@ -1,0 +1,357 @@
+Controller/ItemController.cs 
+--
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using WebApplication2.Data;
+using WebApplication2.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace WebApplication2.Controllers
+{
+    public class ItemController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public ItemController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // READ - List all items
+        public async Task<IActionResult> Index()
+        {
+            var items = await _context.Items
+                .FromSqlRaw("EXEC sp_GetAllItems")
+                .ToListAsync();
+            return View(items);
+        }
+
+        // CREATE - GET
+        public IActionResult Create()
+        {
+            LoadCategories();
+            return View();
+        }
+
+        // CREATE - POST
+        [HttpPost]
+        //public async Task<IActionResult> Create(Item item)
+        //{
+        //    if (ModelState.IsValid)
+        //    {
+        //        await _context.Database.ExecuteSqlRawAsync(
+        //            "EXEC sp_InsertItem @ItemName, @CategoryID, @Quantity, @Status",
+        //            new SqlParameter("@ItemName", item.ItemName),
+        //            new SqlParameter("@CategoryID", item.CategoryID),
+        //            new SqlParameter("@Quantity", item.Quantity),
+        //            new SqlParameter("@Status", item.Status)
+        //        );
+        //        return RedirectToAction(nameof(Index));
+        //    }
+        //    LoadCategories();
+        //    return View(item);
+        //}
+        [ValidateAntiForgeryToken]
+        //public IActionResult Create(Item model)
+        //{
+        //    if (ModelState.IsValid)
+        //    {
+        //        // Get category to extract CategoryCode
+        //        var category = _context.Categories
+        //            .FirstOrDefault(c => c.CategoryID == model.CategoryID);
+
+        //        if (category == null)
+        //        {
+        //            ModelState.AddModelError("", "Invalid Category.");
+        //            LoadCategories();
+        //            return View(model);
+        //        }
+
+        //        // Generate ControlNo
+        //        model.ControlNo = GenerateControlNo(category.CategoryCode);
+
+        //        // Save item via stored procedure
+        //        var pName = new SqlParameter("@ItemName", model.ItemName);
+        //        var pCategory = new SqlParameter("@CategoryID", model.CategoryID);
+        //        var pQty = new SqlParameter("@Quantity", model.Quantity);
+        //        var pStatus = new SqlParameter("@Status", model.Status);
+        //        var pControl = new SqlParameter("@ControlNo", model.ControlNo);
+
+        //        _context.Database.ExecuteSqlRaw(@"
+        //    EXEC sp_InsertItem 
+        //        @ItemName,
+        //        @CategoryID,
+        //        @Quantity,
+        //        @Status,
+        //        @ControlNo",
+        //            pName, pCategory, pQty, pStatus, pControl
+        //        );
+
+        //        return RedirectToAction(nameof(Index));
+        //    }
+
+        //    LoadCategories();
+        //    return View(model);
+        //}
+
+        public IActionResult Create(Item model)
+        {
+            if (ModelState.IsValid)
+            {
+                // 1. Get Category (to get validity months & prefix)
+                var category = _context.Categories
+                    .FirstOrDefault(c => c.CategoryID == model.CategoryID);
+
+                if (category == null)
+                {
+                    ModelState.AddModelError("", "Invalid Category.");
+                    LoadCategories();
+                    return View(model);
+                }
+
+                // 2. Generate ControlNo
+                model.ControlNo = GenerateControlNo(category.CategoryCode);
+
+                // 3. Set Added Date (today)
+                model.AddedDate = DateTime.Now;
+
+                // 4. Compute Warranty Expiration Date
+                model.WarrantyExpiration = model.AddedDate.AddMonths(category.ValidityMonths);
+
+                // 5. Save via Stored Procedure
+                var pName = new SqlParameter("@ItemName", model.ItemName);
+                var pCat = new SqlParameter("@CategoryID", model.CategoryID);
+                var pQty = new SqlParameter("@Quantity", model.Quantity);
+                var pStatus = new SqlParameter("@Status", model.Status);
+                var pCtrl = new SqlParameter("@ControlNo", model.ControlNo);
+                var pDate = new SqlParameter("@AddedDate", model.AddedDate);
+                var pExp = new SqlParameter("@WarrantyExpiration", model.WarrantyExpiration);
+
+                _context.Database.ExecuteSqlRaw(@"
+            EXEC sp_InsertItem 
+                @ItemName,
+                @CategoryID,
+                @Quantity,
+                @Status,
+                @ControlNo,
+                @AddedDate,
+                @WarrantyExpiration",
+                    pName, pCat, pQty, pStatus, pCtrl, pDate, pExp
+                );
+
+                return RedirectToAction(nameof(Index));
+            }
+
+            LoadCategories();
+            return View(model);
+        }
+
+
+        // EDIT - GET
+        public async Task<IActionResult> Edit(int id)
+        {
+            //    var item = await _context.Items
+            //        .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+            //        .FirstOrDefaultAsync();
+            var item = _context.Items
+                  .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+                  .AsEnumerable()
+                  .FirstOrDefault();
+
+            if (item == null)
+                return NotFound();
+
+            LoadCategories();
+            return View(item);
+        }
+        //public async Task<IActionResult> Edit(int id)
+        //{
+        //    //var item = await _context.Items
+        //    //    .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+        //    //    .FirstOrDefaultAsync();
+        //    var item = await Task.Run(() =>
+        //        _context.Items
+        //            .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+        //            .AsEnumerable()
+        //            .FirstOrDefault()
+        //    );
+
+        //    if (item == null)
+        //        return NotFound();
+
+        //    return View(item);
+        //}
+
+        // EDIT - POST
+        [HttpPost]
+        public async Task<IActionResult> Edit(Item item)
+        {
+            if (ModelState.IsValid)
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_UpdateItem @ItemID, @ItemName, @CategoryID, @Quantity, @Status",
+                    new SqlParameter("@ItemID", item.ItemID),
+                    new SqlParameter("@ItemName", item.ItemName),
+                    new SqlParameter("@CategoryID", item.CategoryID),
+                    new SqlParameter("@Quantity", item.Quantity),
+                    new SqlParameter("@Status", item.Status)
+                );
+                return RedirectToAction(nameof(Index));
+            }
+            return View(item);
+        }
+
+        // DELETE - GET
+        public async Task<IActionResult> Delete(int id)
+        {
+            //var item = await _context.Items
+            //    .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+            //    .FirstOrDefaultAsync();
+            //var item = await Task.Run(() =>
+            //    _context.Items
+            //        .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+            //        .AsEnumerable()
+            //        .FirstOrDefault()
+            //);
+            var item = _context.Items
+                .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+                .AsEnumerable()
+                .FirstOrDefault();
+
+            if (item == null)
+                return NotFound();
+
+            return View(item);
+        }
+
+        // DELETE - POST
+        [HttpPost, ActionName("Delete")]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC sp_DeleteItem @ItemID",
+                new SqlParameter("@ItemID", id)
+            );
+            return RedirectToAction(nameof(Index));
+        }
+        private void LoadCategories()
+        {
+            ViewBag.Categories = _context.Categories
+                .FromSqlRaw("SELECT * FROM tbl_Category")
+                .AsEnumerable()
+                .ToList();
+        }
+
+
+        private string GenerateControlNo(string categoryCode)
+        {
+            string mmyy = DateTime.Now.ToString("MMyy");
+
+            // call stored procedure to get current max seq
+            var sqlCategoryCode = new SqlParameter("@CategoryCode", categoryCode);
+            var sqlMMYY = new SqlParameter("@MMYY", mmyy);
+
+            int maxSeq = _context.Database
+                .SqlQueryRaw<int>("EXEC sp_GetMaxControlNoSeq @CategoryCode, @MMYY",
+                    sqlCategoryCode, sqlMMYY)
+                .AsEnumerable()
+                .FirstOrDefault();
+
+            int newSeq = maxSeq + 1;
+            string seqFormatted = newSeq.ToString("000");
+
+            return $"{categoryCode}-{mmyy}-{seqFormatted}";
+        }
+
+
+
+
+    }
+
+
+}
+
+--
+Data/ApplicationDbContext.cs
+--
+using Microsoft.EntityFrameworkCore;
+using WebApplication2.Models;
+
+namespace WebApplication2.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<Item> Items { get; set; }
+
+        public DbSet<Category> Categories { get; set; }
+
+        // This will not create table directly since we are using stored procedures
+
+
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Category>()
+                .ToTable("tbl_Category");
+
+            modelBuilder.Entity<Item>()
+                .ToTable("tbl_Item");
+        }
+    }
+
+}
+--
+Models/Category.cs
+--
+namespace WebApplication2.Models
+{
+    public class Category
+    {
+        public int CategoryID { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+
+        public string Uom { get; set; } = string.Empty;
+        public int Quantity { get; set; }
+
+        public string CategoryCode { get; set; } = string.Empty;
+
+        public int ValidityMonths { get; set; }
+    }
+}
+--
+Models/Item.cs
+--
+namespace WebApplication2.Models
+{
+    public class Item
+    {
+        public int ItemID { get; set; }
+        public string ItemName { get; set; } = string.Empty;
+
+        //public string Category { get; set; } = string.Empty;
+        public int CategoryID { get; set; }
+        public int Quantity { get; set; }
+        public string Status { get; set; } = string.Empty;
+
+
+        // Navigation property (optional)
+        //public Category? Category { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+
+        public string ControlNo { get; set; } = string.Empty;
+
+        public DateTime AddedDate { get; set; }
+        public DateTime? WarrantyExpiration { get; set; }
+    }
+}
+--
+
+
+
