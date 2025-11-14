@@ -1,4 +1,192 @@
+Great! We can add warranty validity per Category and then automatically compute the Item’s warranty expiration date based on the item’s AddedDate.
 
+Below is the complete, beginner-friendly implementation.
+
+
+---
+
+✅ 1. Add Warranty (Validity) Column to tbl_Category
+
+This column stores number of months of validity.
+
+ALTER TABLE tbl_Category
+ADD ValidityMonths INT;
+
+Example values:
+
+UPDATE tbl_Category SET ValidityMonths = 36 WHERE CategoryName = 'Monitor';      -- 3 years
+UPDATE tbl_Category SET ValidityMonths = 6  WHERE CategoryName = 'Telephone';    -- 6 months
+UPDATE tbl_Category SET ValidityMonths = 12 WHERE CategoryName = 'Printer';      -- example
+
+
+---
+
+✅ 2. Update Category Model
+
+In Models/Category.cs add:
+
+public int ValidityMonths { get; set; }
+
+Full model:
+
+public class Category
+{
+    public int CategoryID { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public string Uom { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public string CategoryCode { get; set; } = string.Empty;
+    public int ValidityMonths { get; set; }
+}
+
+
+---
+
+✅ 3. Add WarrantyExpiration Column to tbl_Item
+
+ALTER TABLE tbl_Item
+ADD WarrantyExpiration DATE;
+
+
+---
+
+✅ 4. Update Item Model
+
+Add:
+
+public DateTime AddedDate { get; set; }
+public DateTime? WarrantyExpiration { get; set; }
+
+Full model:
+
+public class Item
+{
+    public int ItemID { get; set; }
+    public string ItemName { get; set; } = string.Empty;
+    public int CategoryID { get; set; }
+    public int Quantity { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string ControlNo { get; set; } = string.Empty;
+    public DateTime AddedDate { get; set; }
+    public DateTime? WarrantyExpiration { get; set; }
+}
+
+
+---
+
+✅ 5. Update Insert Stored Procedure sp_InsertItem
+
+Modify to accept and save WarrantyExpiration + AddedDate:
+
+CREATE OR ALTER PROCEDURE sp_InsertItem
+    @ItemName NVARCHAR(150),
+    @CategoryID INT,
+    @Quantity INT,
+    @Status NVARCHAR(50),
+    @ControlNo NVARCHAR(20),
+    @AddedDate DATE,
+    @WarrantyExpiration DATE
+AS
+BEGIN
+    INSERT INTO tbl_Item (ItemName, CategoryID, Quantity, Status, ControlNo, AddedDate, WarrantyExpiration)
+    VALUES (@ItemName, @CategoryID, @Quantity, @Status, @ControlNo, @AddedDate, @WarrantyExpiration);
+END
+
+
+---
+
+✅ 6. Automatically Compute Warranty Expiration in ItemController
+
+Modify your Create POST method:
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public IActionResult Create(Item model)
+{
+    if (ModelState.IsValid)
+    {
+        // 1. Get Category (to get validity months & prefix)
+        var category = _context.Categories
+            .FirstOrDefault(c => c.CategoryID == model.CategoryID);
+
+        if (category == null)
+        {
+            ModelState.AddModelError("", "Invalid Category.");
+            LoadCategories();
+            return View(model);
+        }
+
+        // 2. Generate ControlNo
+        model.ControlNo = GenerateControlNo(category.CategoryCode);
+
+        // 3. Set Added Date (today)
+        model.AddedDate = DateTime.Today;
+
+        // 4. Compute Warranty Expiration Date
+        model.WarrantyExpiration = model.AddedDate.AddMonths(category.ValidityMonths);
+
+        // 5. Save via Stored Procedure
+        var pName   = new SqlParameter("@ItemName", model.ItemName);
+        var pCat    = new SqlParameter("@CategoryID", model.CategoryID);
+        var pQty    = new SqlParameter("@Quantity", model.Quantity);
+        var pStatus = new SqlParameter("@Status", model.Status);
+        var pCtrl   = new SqlParameter("@ControlNo", model.ControlNo);
+        var pDate   = new SqlParameter("@AddedDate", model.AddedDate);
+        var pExp    = new SqlParameter("@WarrantyExpiration", model.WarrantyExpiration);
+
+        _context.Database.ExecuteSqlRaw(@"
+            EXEC sp_InsertItem 
+                @ItemName,
+                @CategoryID,
+                @Quantity,
+                @Status,
+                @ControlNo,
+                @AddedDate,
+                @WarrantyExpiration",
+            pName, pCat, pQty, pStatus, pCtrl, pDate, pExp
+        );
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    LoadCategories();
+    return View(model);
+}
+
+
+---
+
+📦 7. Result: Automatic Warranty Tracking
+
+Example:
+
+Category = Monitor
+
+ValidityMonths = 36
+
+AddedDate = 2025-11-14
+
+
+WarrantyExpiration:
+
+2025-11-14 + 36 months = 2028-11-14
+
+Stored in DB automatically.
+
+
+---
+
+🧪 OPTIONAL (if you want)
+
+I can also add:
+
+✔ Show warranty in Index table
+✔ Highlight expired items in red
+✔ Dashboard showing items expiring soon
+✔ Add automatic email/notification for expiring items
+✔ Add “Remaining Days” column
+
+Just tell me and I will add them.
 
 **
 
