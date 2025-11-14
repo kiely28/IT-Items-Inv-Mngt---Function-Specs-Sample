@@ -1,3 +1,9 @@
+var items = await _context.Items
+in ItemController.cs
+Error: InvalidOperationException: The required column 'ControlNo' was not present in the results of a 'FromSql' operation.
+
+**
+
 Got it — these 2 errors are expected because:
 1️⃣ Your Category model does not yet contain CategoryCode
 2️⃣ EF Core 8 does NOT have SqlQuery<T> anymore — it was replaced with Database.SqlQueryRaw<T>.
