@@ -1,0 +1,164 @@
+USE [db_IIIM]
+GO
+/****** Object:  Table [dbo].[tbl_Category]    Script Date: 11/14/2025 4:43:49 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[tbl_Category](
+	[CategoryID] [int] IDENTITY(1,1) NOT NULL,
+	[CategoryName] [nvarchar](100) NULL,
+	[Uom] [nvarchar](20) NULL,
+	[Quantity] [int] NULL,
+	[CategoryCode] [nvarchar](20) NULL,
+	[ValidityMonths] [int] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[CategoryID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[tbl_Item]    Script Date: 11/14/2025 4:43:49 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[tbl_Item](
+	[ItemID] [int] IDENTITY(1,1) NOT NULL,
+	[ItemName] [nvarchar](100) NULL,
+	[CategoryID] [int] NULL,
+	[ControlNo] [nvarchar](20) NULL,
+	[Quantity] [int] NULL,
+	[WarrantyExpiration] [date] NULL,
+	[AddedDate] [datetime] NULL,
+	[Status] [nvarchar](20) NULL,
+ CONSTRAINT [PK__tbl_Item__727E83EBB94F3066] PRIMARY KEY CLUSTERED 
+(
+	[ItemID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[tbl_Item] ADD  CONSTRAINT [DF_tbl_Item_AddedDate]  DEFAULT (getdate()) FOR [AddedDate]
+GO
+/****** Object:  StoredProcedure [dbo].[sp_DeleteItem]    Script Date: 11/14/2025 4:43:49 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[sp_DeleteItem]
+    @ItemID INT
+AS
+BEGIN
+    DELETE FROM tbl_Item WHERE ItemID = @ItemID;
+END;
+GO
+/****** Object:  StoredProcedure [dbo].[sp_GetAllItems]    Script Date: 11/14/2025 4:43:49 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[sp_GetAllItems]
+AS
+BEGIN
+    SELECT i.ItemID, i.ItemName, i.Quantity, i.Status, 
+           c.CategoryID, c.CategoryName, i.ControlNo, i.AddedDate, i.WarrantyExpiration
+    FROM tbl_Item i
+    INNER JOIN tbl_Category c ON i.CategoryID = c.CategoryID
+    ORDER BY i.ItemID DESC;
+END;
+GO
+/****** Object:  StoredProcedure [dbo].[sp_GetItemById]    Script Date: 11/14/2025 4:43:49 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[sp_GetItemById]
+    @ItemID INT
+AS
+BEGIN
+    SELECT i.ItemID, i.ItemName, i.Quantity, i.Status, 
+           c.CategoryID, c.CategoryName, i.ControlNo, i.AddedDate, i.WarrantyExpiration
+    FROM tbl_Item i
+    INNER JOIN tbl_Category c ON i.CategoryID = c.CategoryID
+    WHERE i.ItemID = @ItemID;
+END;
+GO
+/****** Object:  StoredProcedure [dbo].[sp_GetMaxControlNoSeq]    Script Date: 11/14/2025 4:43:49 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[sp_GetMaxControlNoSeq]
+    @CategoryCode NVARCHAR(10),
+    @MMYY NVARCHAR(4)
+AS
+BEGIN
+    SELECT ISNULL(
+        MAX(CAST(RIGHT(ControlNo, 3) AS INT))
+    , 0) AS MaxSeq
+    FROM tbl_Item
+    WHERE ControlNo LIKE @CategoryCode + '-' + @MMYY + '-%';
+END
+GO
+/****** Object:  StoredProcedure [dbo].[sp_InsertItem]    Script Date: 11/14/2025 4:43:49 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[sp_InsertItem]
+--    @ItemName NVARCHAR(100),
+--    @CategoryID INT,
+--    @Quantity INT,
+--    @Status NVARCHAR(20)
+--AS
+--BEGIN
+--    INSERT INTO tbl_Item (ItemName, CategoryID, Quantity, Status)
+--    VALUES (@ItemName, @CategoryID, @Quantity, @Status);
+--END;
+
+
+----    @ItemName NVARCHAR(150),
+----    @CategoryID INT,
+----    @Quantity INT,
+----    @Status NVARCHAR(50),
+----    @ControlNo NVARCHAR(20)
+----AS
+----BEGIN
+----    INSERT INTO tbl_Item (ItemName, CategoryID, Quantity, Status, ControlNo)
+----    VALUES (@ItemName, @CategoryID, @Quantity, @Status, @ControlNo);
+----END
+
+@ItemName NVARCHAR(150),
+    @CategoryID INT,
+    @Quantity INT,
+    @Status NVARCHAR(50),
+    @ControlNo NVARCHAR(20),
+    @AddedDate DATETIME,
+    @WarrantyExpiration DATE
+AS
+BEGIN
+    INSERT INTO tbl_Item (ItemName, CategoryID, Quantity, Status, ControlNo, AddedDate, WarrantyExpiration)
+    VALUES (@ItemName, @CategoryID, @Quantity, @Status, @ControlNo, @AddedDate, @WarrantyExpiration);
+END
+GO
+/****** Object:  StoredProcedure [dbo].[sp_UpdateItem]    Script Date: 11/14/2025 4:43:49 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE [dbo].[sp_UpdateItem]
+    @ItemID INT,
+    @ItemName NVARCHAR(100),
+    @CategoryID INT,
+    @Quantity INT,
+    @Status NVARCHAR(20)
+AS
+BEGIN
+    UPDATE tbl_Item
+    SET ItemName = @ItemName,
+        CategoryID = @CategoryID,
+        Quantity = @Quantity,
+        Status = @Status
+    WHERE ItemID = @ItemID;
+END;
+GO
