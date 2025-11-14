@@ -1,3 +1,190 @@
+Below is a clean, beginner-friendly implementation that adds automatic Control No generation when saving an Item in ASP.NET Core MVC 8 + EF Core + Stored Procedures**, using your required format:
+
+> NT-AT-MMYY-###
+• The prefix NT-AT comes from the selected Category
+• MMYY = current month + year
+• ### = auto-increment per month and per category
+
+
+
+
+---
+
+✅ 1. Add Column in tbl_Item
+
+Add new column to SQL:
+
+ALTER TABLE tbl_Item
+ADD ControlNo NVARCHAR(20);
+
+
+---
+
+✅ 2. Add Column in Item Model
+
+public string ControlNo { get; set; } = string.Empty;
+
+
+---
+
+✅ 3. Update Category Table (add Code Prefix)
+
+To support NT-AT per category, we add a new column:
+
+ALTER TABLE tbl_Category
+ADD CategoryCode NVARCHAR(10);
+
+Sample Data
+
+UPDATE tbl_Category SET CategoryCode = 'NT-AT' WHERE CategoryName = 'Network Tools';
+UPDATE tbl_Category SET CategoryCode = 'IT-AT' WHERE CategoryName = 'IT Assets';
+UPDATE tbl_Category SET CategoryCode = 'EL-AT' WHERE CategoryName = 'Electronics';
+
+So you can configure any code per category.
+
+
+---
+
+✅ 4. Stored Procedure to Get Current Max Sequence
+
+Create a stored procedure to get the current highest sequence for that month + category.
+
+CREATE OR ALTER PROCEDURE sp_GetMaxControlNoSeq
+    @CategoryCode NVARCHAR(10),
+    @MMYY NVARCHAR(4)
+AS
+BEGIN
+    SELECT ISNULL(
+        MAX(CAST(RIGHT(ControlNo, 3) AS INT))
+    , 0) AS MaxSeq
+    FROM tbl_Item
+    WHERE ControlNo LIKE @CategoryCode + '-' + @MMYY + '-%';
+END
+
+
+---
+
+✅ 5. Generate Control No in Controller (ItemController)
+
+Add Method to Generate Control No
+
+private string GenerateControlNo(string categoryCode)
+{
+    string mmyy = DateTime.Now.ToString("MMyy");
+
+    // call stored procedure to get current max seq
+    var sqlCategoryCode = new SqlParameter("@CategoryCode", categoryCode);
+    var sqlMMYY = new SqlParameter("@MMYY", mmyy);
+
+    int maxSeq = _context.Database
+        .SqlQuery<int>("EXEC sp_GetMaxControlNoSeq @CategoryCode, @MMYY",
+            sqlCategoryCode, sqlMMYY)
+        .FirstOrDefault();
+
+    int newSeq = maxSeq + 1;
+    string seqFormatted = newSeq.ToString("000");
+
+    return $"{categoryCode}-{mmyy}-{seqFormatted}";
+}
+
+
+---
+
+✅ 6. Apply Auto-Generated Control No When Saving Item
+
+In POST Create:
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public IActionResult Create(Item model)
+{
+    if (ModelState.IsValid)
+    {
+        // Get category to extract CategoryCode
+        var category = _context.Categories
+            .FirstOrDefault(c => c.CategoryID == model.CategoryID);
+
+        if (category == null)
+        {
+            ModelState.AddModelError("", "Invalid Category.");
+            LoadCategories();
+            return View(model);
+        }
+
+        // Generate ControlNo
+        model.ControlNo = GenerateControlNo(category.CategoryCode);
+
+        // Save item via stored procedure
+        var pName = new SqlParameter("@ItemName", model.ItemName);
+        var pCategory = new SqlParameter("@CategoryID", model.CategoryID);
+        var pQty = new SqlParameter("@Quantity", model.Quantity);
+        var pStatus = new SqlParameter("@Status", model.Status);
+        var pControl = new SqlParameter("@ControlNo", model.ControlNo);
+
+        _context.Database.ExecuteSqlRaw(@"
+            EXEC sp_InsertItem 
+                @ItemName,
+                @CategoryID,
+                @Quantity,
+                @Status,
+                @ControlNo",
+            pName, pCategory, pQty, pStatus, pControl
+        );
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    LoadCategories();
+    return View(model);
+}
+
+
+---
+
+✅ 7. Update Stored Procedure sp_InsertItem
+
+Make sure it includes ControlNo:
+
+CREATE OR ALTER PROCEDURE sp_InsertItem
+    @ItemName NVARCHAR(150),
+    @CategoryID INT,
+    @Quantity INT,
+    @Status NVARCHAR(50),
+    @ControlNo NVARCHAR(20)
+AS
+BEGIN
+    INSERT INTO tbl_Item (ItemName, CategoryID, Quantity, Status, ControlNo)
+    VALUES (@ItemName, @CategoryID, @Quantity, @Status, @ControlNo);
+END
+
+
+---
+
+🎉 FINAL RESULT (Example)
+
+If CategoryCode = NT-AT
+System date = December 2025 → 1225
+Last sequence = 005
+
+Generated:
+
+NT-AT-1225-006
+
+Automatically generated when saving the item.
+
+
+---
+
+Want me to also:
+
+✅ Add ControlNo in Index table?
+✅ Add ControlNo in Edit + Details pages?
+✅ Make prefix dynamic (e.g., NT-IT, NT-CT)?
+
+Just tell me!
+
+**
+
 Excellent — you’re moving toward a smarter inventory design 👏
 
 Let’s enhance your setup so that when a user selects a Category in the Item Create form,
