@@ -1,3 +1,110 @@
+Got it — these 2 errors are expected because:
+1️⃣ Your Category model does not yet contain CategoryCode
+2️⃣ EF Core 8 does NOT have SqlQuery<T> anymore — it was replaced with Database.SqlQueryRaw<T>.
+
+Let’s fix both cleanly and correctly.
+
+
+---
+
+✅ FIX 1 — Add CategoryCode Property in Category Model
+
+In Models/Category.cs, add:
+
+public string CategoryCode { get; set; } = string.Empty;
+
+Full model should look like:
+
+public class Category
+{
+    public int CategoryID { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
+    public string Uom { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public string CategoryCode { get; set; } = string.Empty;
+}
+
+👉 After adding this, rebuild the project.
+
+
+---
+
+✅ FIX 2 — Replace SqlQuery With SqlQueryRaw (EF Core 8)
+
+You used this:
+
+_context.Database.SqlQuery<int>("EXEC sp_GetMaxControlNoSeq @CategoryCode, @MMYY",
+    sqlCategoryCode, sqlMMYY)
+    .FirstOrDefault();
+
+But EF Core 8 uses:
+
+Database.SqlQueryRaw<T>
+
+✔️ Here is the corrected version:
+
+int maxSeq = _context.Database
+    .SqlQueryRaw<int>("EXEC sp_GetMaxControlNoSeq @CategoryCode, @MMYY",
+        sqlCategoryCode, sqlMMYY)
+    .AsEnumerable()
+    .FirstOrDefault();
+
+Important: You MUST call .AsEnumerable() to avoid composability errors.
+
+
+---
+
+✅ Final Working GenerateControlNo Method
+
+private string GenerateControlNo(string categoryCode)
+{
+    string mmyy = DateTime.Now.ToString("MMyy");
+
+    var sqlCategoryCode = new SqlParameter("@CategoryCode", categoryCode);
+    var sqlMMYY = new SqlParameter("@MMYY", mmyy);
+
+    int maxSeq = _context.Database
+        .SqlQueryRaw<int>("EXEC sp_GetMaxControlNoSeq @CategoryCode, @MMYY",
+            sqlCategoryCode, sqlMMYY)
+        .AsEnumerable()
+        .FirstOrDefault();
+
+    int newSeq = maxSeq + 1;
+    string seqFormatted = newSeq.ToString("000");
+
+    return $"{categoryCode}-{mmyy}-{seqFormatted}";
+}
+
+
+---
+
+💡 Extra Step: Ensure tbl_Category has CategoryCode
+
+If not added yet:
+
+ALTER TABLE tbl_Category
+ADD CategoryCode NVARCHAR(10);
+
+Example values:
+
+UPDATE tbl_Category SET CategoryCode = 'NT-AT' WHERE CategoryName = 'Network Tools';
+UPDATE tbl_Category SET CategoryCode = 'IT-AT' WHERE CategoryName = 'IT Assets';
+
+
+---
+
+🎉 Your Errors Are Now Fully Fixed!
+
+If you want, I can continue with:
+
+✅ Adding ControlNo in Edit + Index pages
+✅ Validations (prevent duplicate ControlNo)
+✅ Auto-generate CategoryCode based on CategoryName (optional)
+
+Just tell me!
+
+**
+
 'Category' does not contain a definition for 'CategoryCode' and no accessible extension method 'CategoryCode' accepting a first argument of type 'Category' could be found (are you missing a using directive or an assembly reference?)
 
 No overload for method 'SqlQuery' takes 3 arguments
