@@ -1,3 +1,303 @@
+Below is a simple and clean “Transfer Only” View + Logic that:
+
+✅ Updates the item location in tbl_items
+
+✅ Updates the item’s quantity (subtracts transferred quantity)
+
+❌ Prevents over-transfer (quantity > available stock)
+
+🎯 Only one page (Transfer View + POST logic)
+
+🧱 Uses Stored Procedure + EF Core + ASP.NET Core MVC 8
+
+
+---
+
+🗄 Step 1 — SQL Stored Procedure
+
+This stored procedure will:
+
+1. Check if quantity to transfer is greater than available stock → prevent
+
+
+2. If OK:
+
+Insert into tbl_Transfer
+
+Update tbl_items.Quantity
+
+Update tbl_items.Location
+
+
+
+
+
+---
+
+📌 Stored Procedure: sp_TransferItem
+
+CREATE PROCEDURE sp_TransferItem
+    @ControlNo NVARCHAR(50),
+    @Warranty NVARCHAR(50),
+    @Quantity INT,
+    @Location NVARCHAR(150)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @CurrentQty INT;
+
+    SELECT @CurrentQty = Quantity 
+    FROM tbl_items 
+    WHERE ControlNo = @ControlNo;
+
+    IF @CurrentQty IS NULL
+    BEGIN
+        RAISERROR('Item not found.', 16, 1);
+        RETURN;
+    END
+
+    IF @Quantity > @CurrentQty
+    BEGIN
+        RAISERROR('Transfer quantity exceeds available stock.', 16, 1);
+        RETURN;
+    END
+
+    -- Insert transfer history
+    INSERT INTO tbl_Transfer (ControlNo, Warranty, Quantity, Location)
+    VALUES (@ControlNo, @Warranty, @Quantity, @Location);
+
+    -- Update item stock
+    UPDATE tbl_items
+    SET Quantity = Quantity - @Quantity,
+        Location = @Location
+    WHERE ControlNo = @ControlNo;
+END
+GO
+
+
+---
+
+🧩 Step 2 — Create Transfer View-Model
+
+Create file:
+
+Models/TransferViewModel.cs
+
+namespace InventorySystem.Models
+{
+    public class TransferViewModel
+    {
+        public string ControlNo { get; set; } = string.Empty;
+        public string? Warranty { get; set; }
+        public int Quantity { get; set; }
+        public string Location { get; set; } = string.Empty;
+
+        // For showing available quantity
+        public int AvailableQuantity { get; set; }
+    }
+}
+
+
+---
+
+🛠 Step 3 — Controller Logic
+
+Only one screen:
+
+GET = show available quantity
+
+POST = call stored procedure + validate
+
+
+📌 TransferController.cs
+
+using InventorySystem.Data;
+using InventorySystem.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+
+namespace InventorySystem.Controllers
+{
+    public class TransferController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public TransferController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // ===================== TRANSFER SCREEN =====================
+        public async Task<IActionResult> Index(string? controlNo)
+        {
+            var model = new TransferViewModel();
+
+            if (!string.IsNullOrEmpty(controlNo))
+            {
+                var item = await _context.Items
+                    .Where(i => i.ControlNo == controlNo)
+                    .FirstOrDefaultAsync();
+
+                if (item != null)
+                {
+                    model.ControlNo = item.ControlNo;
+                    model.AvailableQuantity = item.Quantity;
+                    model.Warranty = item.Warranty;
+                }
+                else
+                {
+                    ViewBag.Error = "Item not found.";
+                }
+            }
+
+            return View(model);
+        }
+
+        // ===================== POST TRANSFER =====================
+        [HttpPost]
+        public async Task<IActionResult> Index(TransferViewModel model)
+        {
+            if (model.Quantity <= 0)
+            {
+                ViewBag.Error = "Quantity must be greater than zero.";
+                return View(model);
+            }
+
+            try
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_TransferItem @ControlNo, @Warranty, @Quantity, @Location",
+                    new SqlParameter("@ControlNo", model.ControlNo),
+                    new SqlParameter("@Warranty", model.Warranty ?? (object)DBNull.Value),
+                    new SqlParameter("@Quantity", model.Quantity),
+                    new SqlParameter("@Location", model.Location)
+                );
+
+                ViewBag.Success = "Transfer completed successfully!";
+            }
+            catch (SqlException ex)
+            {
+                // User-friendly error
+                ViewBag.Error = ex.Message;
+            }
+
+            // Reload available quantity
+            var item = await _context.Items
+                .Where(i => i.ControlNo == model.ControlNo)
+                .FirstOrDefaultAsync();
+
+            if (item != null)
+                model.AvailableQuantity = item.Quantity;
+
+            return View(model);
+        }
+    }
+}
+
+
+---
+
+🎨 Step 4 — Transfer View (Single Page)
+
+📌 Views/Transfer/Index.cshtml
+
+@model InventorySystem.Models.TransferViewModel
+
+<h2>Item Transfer</h2>
+
+<form method="get">
+    <div class="mb-3">
+        <label>Control No</label>
+        <input name="controlNo" class="form-control" value="@Model.ControlNo" />
+    </div>
+    <button class="btn btn-secondary">Load Item</button>
+</form>
+
+@if (ViewBag.Error != null)
+{
+    <div class="alert alert-danger mt-3">@ViewBag.Error</div>
+}
+
+@if (ViewBag.Success != null)
+{
+    <div class="alert alert-success mt-3">@ViewBag.Success</div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ControlNo))
+{
+<form method="post">
+    <input type="hidden" asp-for="ControlNo" />
+    <input type="hidden" asp-for="Warranty" />
+
+    <div class="mt-4 p-3 border rounded">
+        <h4>Item Details</h4>
+        <p><strong>Control No:</strong> @Model.ControlNo</p>
+        <p><strong>Warranty:</strong> @Model.Warranty</p>
+        <p><strong>Available Quantity:</strong> @Model.AvailableQuantity</p>
+
+        <div class="mb-3">
+            <label>Quantity to Transfer</label>
+            <input asp-for="Quantity" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label>New Location</label>
+            <input asp-for="Location" class="form-control" />
+        </div>
+
+        <button class="btn btn-primary">Submit Transfer</button>
+    </div>
+</form>
+}
+
+
+---
+
+🎯 How it works
+
+✔ 1. User enters ControlNo
+
+→ System loads item info + available stock.
+
+✔ 2. User enters quantity + new location
+
+→ System checks if quantity > available stock inside stored procedure.
+
+✔ 3. Good?
+
+Inserts into tbl_Transfer
+
+Updates tbl_items.Quantity = Quantity - Transferred
+
+Updates tbl_items.Location = New Location
+
+
+✔ 4. Bad?
+
+Shows error "Transfer quantity exceeds available stock"
+
+
+
+---
+
+🚀 Want It More Advanced?
+
+I can add:
+
+✔ Auto-suggest ControlNo (search dropdown)
+✔ Prevent transfer if item is disposed/repaired
+✔ Track old & new locations
+✔ Barcode scanning
+✔ DataTables UI
+✔ Transfer history report
+
+Just tell me: “Upgrade transfer module”
+
+**
+
+
 Below is a complete beginner-friendly Transfer Module for your ASP.NET Core MVC 8 + EF Core + Stored Procedures project.
 This module includes:
 
