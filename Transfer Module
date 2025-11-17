@@ -1,3 +1,75 @@
+Ah! That explains the error perfectly. 😄
+
+Your database column and Item model use WarrantyExpiration instead of Warranty. So anywhere in the controller or view you wrote item.Warranty needs to be updated to item.WarrantyExpiration.
+
+Let’s fix it properly.
+
+
+---
+
+🔹 Step 1 — Update TransferController
+
+In TransferController.cs, replace:
+
+model.Warranty = item.Warranty;
+
+with:
+
+model.Warranty = item.WarrantyExpiration?.ToString("yyyy-MM-dd"); // or just .ToString()
+
+I’m assuming WarrantyExpiration is DateTime? in the model.
+
+If it’s string, just use item.WarrantyExpiration.
+
+
+Also, in the stored procedure call, pass WarrantyExpiration as string:
+
+new SqlParameter("@Warranty", model.Warranty ?? (object)DBNull.Value)
+
+
+---
+
+🔹 Step 2 — Update TransferViewModel
+
+Currently your TransferViewModel has:
+
+public string? Warranty { get; set; }
+
+Since your database column is WarrantyExpiration, you can keep it as string? to display in the view.
+It will just show the expiration date.
+
+public string? Warranty { get; set; } // holds WarrantyExpiration date as string
+
+
+---
+
+🔹 Step 3 — Update Views (Optional)
+
+Where you display the Warranty in Index.cshtml:
+
+<p><strong>Warranty Expiration:</strong> @Model.Warranty</p>
+
+
+---
+
+🔹 Step 4 — Summary
+
+Change all references from Warranty → WarrantyExpiration in code.
+
+Transfer stored procedure can still accept @Warranty NVARCHAR(50); just pass the date as string.
+
+This fixes the Item does not contain a definition for 'Warranty' error.
+
+
+
+---
+
+If you want, I can now rewrite the Transfer Only module fully using WarrantyExpiration, updating item location and preventing over-transfer, so it works cleanly with your current Item model.
+
+Do you want me to do that?
+
+**
+
 Ah! That error explains exactly what’s going on: your tbl_items (or Item model) doesn’t have a Warranty property, so the code trying to read item.Warranty fails.
 
 We need to match the model to the database table.
