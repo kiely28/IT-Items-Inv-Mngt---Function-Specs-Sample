@@ -1,0 +1,270 @@
+Below is a complete, beginner-friendly sample module for Transfer (Out) using ASP.NET Core MVC 8, EF Core, and Stored Procedures in SQL Server.
+
+This example includes:
+
+✔ Database Table
+✔ Stored Procedures (Insert + List + GetById)
+✔ Model
+✔ DbContext configuration
+✔ Controller (CRUD logic using Stored Procedures → no EF LINQ)
+✔ Views (Create + Index + Details)
+
+
+---
+
+✅ 1. SQL SERVER — TABLE
+
+CREATE TABLE tbl_TransferOut (
+    TransferOutId INT IDENTITY(1,1) PRIMARY KEY,
+    ControlNo VARCHAR(50) NOT NULL,
+    Warranty VARCHAR(100),
+    Quantity INT NOT NULL,
+    Location VARCHAR(100),
+    CreatedDate DATETIME DEFAULT GETDATE()
+);
+
+
+---
+
+✅ 2. SQL SERVER — STORED PROCEDURES
+
+➤ Insert SP
+
+CREATE OR ALTER PROCEDURE sp_TransferOut_Insert
+    @ControlNo VARCHAR(50),
+    @Warranty VARCHAR(100),
+    @Quantity INT,
+    @Location VARCHAR(100)
+AS
+BEGIN
+    INSERT INTO tbl_TransferOut (ControlNo, Warranty, Quantity, Location)
+    VALUES (@ControlNo, @Warranty, @Quantity, @Location);
+END
+
+➤ List All SP
+
+CREATE OR ALTER PROCEDURE sp_TransferOut_List
+AS
+BEGIN
+    SELECT * FROM tbl_TransferOut ORDER BY TransferOutId DESC;
+END
+
+➤ Get By ID SP
+
+CREATE OR ALTER PROCEDURE sp_TransferOut_GetById
+    @TransferOutId INT
+AS
+BEGIN
+    SELECT * FROM tbl_TransferOut WHERE TransferOutId = @TransferOutId;
+END
+
+
+---
+
+✅ 3. MODEL — TransferOut.cs
+
+public class TransferOut
+{
+    public int TransferOutId { get; set; }
+    public string ControlNo { get; set; }
+    public string Warranty { get; set; }
+    public int Quantity { get; set; }
+    public string Location { get; set; }
+    public DateTime CreatedDate { get; set; }
+}
+
+
+---
+
+✅ 4. DB CONTEXT — register entity without EF table mapping (SP only)
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options) { }
+
+    public DbSet<TransferOut> TransferOuts { get; set; }
+}
+
+
+---
+
+✅ 5. CONTROLLER — TransferOutController.cs
+
+This uses Stored Procedures only, no EF LINQ queries.
+
+public class TransferOutController : Controller
+{
+    private readonly AppDbContext _context;
+
+    public TransferOutController(AppDbContext context)
+    {
+        _context = context;
+    }
+
+    // ---------------- INDEX ----------------
+    public async Task<IActionResult> Index()
+    {
+        var data = await _context.TransferOuts
+            .FromSqlRaw("EXEC sp_TransferOut_List")
+            .ToListAsync();
+
+        return View(data);
+    }
+
+    // ---------------- DETAILS ----------------
+    public async Task<IActionResult> Details(int id)
+    {
+        var data = await _context.TransferOuts
+            .FromSqlRaw("EXEC sp_TransferOut_GetById @p0", id)
+            .FirstOrDefaultAsync();
+
+        if (data == null)
+            return NotFound();
+
+        return View(data);
+    }
+
+    // ---------------- CREATE ----------------
+    public IActionResult Create()
+    {
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create(TransferOut model)
+    {
+        if (!ModelState.IsValid)
+            return View(model);
+
+        await _context.Database.ExecuteSqlRawAsync(
+            "EXEC sp_TransferOut_Insert @p0, @p1, @p2, @p3",
+            model.ControlNo, model.Warranty, model.Quantity, model.Location
+        );
+
+        return RedirectToAction(nameof(Index));
+    }
+}
+
+
+---
+
+✅ 6. VIEW — /Views/TransferOut/Index.cshtml
+
+@model IEnumerable<TransferOut>
+
+<h2>Transfer (Out) List</h2>
+<a class="btn btn-primary" href="/TransferOut/Create">New Transfer Out</a>
+<br /><br />
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Control No</th>
+            <th>Warranty</th>
+            <th>Qty</th>
+            <th>Location</th>
+            <th>Date</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(var item in Model)
+        {
+            <tr>
+                <td>@item.ControlNo</td>
+                <td>@item.Warranty</td>
+                <td>@item.Quantity</td>
+                <td>@item.Location</td>
+                <td>@item.CreatedDate.ToString("yyyy-MM-dd")</td>
+                <td>
+                    <a href="/TransferOut/Details/@item.TransferOutId" class="btn btn-sm btn-info">View</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+---
+
+✅ 7. VIEW — /Views/TransferOut/Create.cshtml
+
+@model TransferOut
+
+<h2>New Transfer (Out)</h2>
+
+<form asp-action="Create" method="post">
+
+    <div class="form-group">
+        <label>Control No</label>
+        <input asp-for="ControlNo" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Warranty</label>
+        <input asp-for="Warranty" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" type="number" />
+    </div>
+
+    <div class="form-group">
+        <label>Location</label>
+        <input asp-for="Location" class="form-control" />
+    </div>
+
+    <br />
+
+    <button type="submit" class="btn btn-success">Save</button>
+    <a href="/TransferOut" class="btn btn-secondary">Cancel</a>
+
+</form>
+
+
+---
+
+✅ 8. VIEW — /Views/TransferOut/Details.cshtml
+
+@model TransferOut
+
+<h2>Transfer (Out) Details</h2>
+
+<table class="table table-bordered">
+    <tr><th>Control No</th><td>@Model.ControlNo</td></tr>
+    <tr><th>Warranty</th><td>@Model.Warranty</td></tr>
+    <tr><th>Quantity</th><td>@Model.Quantity</td></tr>
+    <tr><th>Location</th><td>@Model.Location</td></tr>
+    <tr><th>Created Date</th><td>@Model.CreatedDate</td></tr>
+</table>
+
+<a href="/TransferOut" class="btn btn-secondary">Back</a>
+
+
+---
+
+🎉 DONE!
+
+You now have a full Transfer Out module:
+
+✔ Table
+✔ Stored Procedures
+✔ MVC + EF Core Code
+✔ Views
+✔ Clean, beginner-friendly
+
+
+---
+
+If you want, I can also add:
+
+✅ Auto-generate Control No
+✅ Add Item dropdown + stock validation
+✅ Add Partial Transfer logic (with parent/child item)
+✅ Add Transaction No logic
+✅ Add Search / Pagination (DataTables)
+
+Just tell me!
