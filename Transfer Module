@@ -1,3 +1,207 @@
+Ah! That explains a lot. 😄
+
+Your errors about CategoryName or missing columns are likely coming from the Category CRUD code you copied, because the controller is trying to call these stored procedures:
+
+sp_GetAllCategories
+
+sp_GetCategoryById
+
+
+…but you don’t have them in your database, so SQL Server throws errors.
+
+
+---
+
+🔹 Options to Fix
+
+Option 1 — Create the missing stored procedures
+
+If you want to use stored procedures for Category CRUD, create them:
+
+-- Get all categories
+CREATE PROCEDURE sp_GetAllCategories
+AS
+BEGIN
+    SELECT CategoryID, CategoryName, Description
+    FROM tbl_Category;
+END
+GO
+
+-- Get category by ID
+CREATE PROCEDURE sp_GetCategoryById
+    @CategoryID INT
+AS
+BEGIN
+    SELECT CategoryID, CategoryName, Description
+    FROM tbl_Category
+    WHERE CategoryID = @CategoryID;
+END
+GO
+
+Then your controller will work without errors.
+
+
+---
+
+Option 2 — Use EF Core directly (simpler for beginners)
+
+Instead of using stored procedures, you can just do:
+
+// Get all
+var categories = await _context.Categories.ToListAsync();
+
+// Get by ID
+var category = await _context.Categories.FindAsync(id);
+
+This way you don’t need stored procedures at all.
+
+Easier for learning, debugging, and beginners.
+
+
+
+---
+
+✅ Recommendation
+
+Since you are just learning and also working on Transfer module, I recommend Option 2 (direct EF Core) for Categories.
+
+You can still use stored procedures for Transfer (to handle updating item location and over-transfer checks).
+
+
+---
+
+If you want, I can rewrite the Transfer-only page completely:
+
+Load item by ControlNo
+
+Show Quantity & WarrantyExpiration
+
+Prevent over-transfer
+
+Update item location in tbl_items
+
+All in one page, no missing stored procedures, fully working with your current model
+
+
+Do you want me to do that?
+
+**
+
+Ah — that error is very clear. 😅
+
+“Invalid column name 'CategoryName'” happens when the SQL query references a column that does not exist in the table it’s querying.
+
+Since you’re clicking Load Item, the code is trying to get item info from tbl_items, but somewhere it’s asking for CategoryName, which doesn’t exist in tbl_items.
+
+
+---
+
+🔹 Step 1 — Check your TransferController Load Query
+
+Earlier, your GET method for loading item looks like:
+
+var item = await _context.Items
+    .Where(i => i.ControlNo == controlNo)
+    .FirstOrDefaultAsync();
+
+This is fine if tbl_items maps exactly to the Item model.
+
+The error usually comes from using FromSqlRaw like this somewhere:
+
+var item = await _context.Items
+    .FromSqlRaw("SELECT CategoryName FROM tbl_items WHERE ControlNo = {0}", controlNo)
+    .FirstOrDefaultAsync();
+
+If your tbl_items table does not have a CategoryName column, this will throw the exception.
+
+
+---
+
+🔹 Step 2 — Fix the SQL Query
+
+Make sure the query only selects columns that exist in tbl_items. For example:
+
+var item = await _context.Items
+    .FromSqlRaw("SELECT ControlNo, Quantity, Location, WarrantyExpiration FROM tbl_items WHERE ControlNo = @ControlNo",
+        new SqlParameter("@ControlNo", controlNo))
+    .FirstOrDefaultAsync();
+
+Replace CategoryName with columns that actually exist:
+ControlNo, Quantity, Location, WarrantyExpiration
+
+
+> If you want to include category info, you need to join with tbl_category:
+
+
+
+SELECT i.ControlNo, i.Quantity, i.Location, i.WarrantyExpiration, c.CategoryName
+FROM tbl_items i
+LEFT JOIN tbl_category c ON i.CategoryID = c.CategoryID
+WHERE i.ControlNo = @ControlNo
+
+Then your model must include a property CategoryName or use a view model.
+
+
+---
+
+🔹 Step 3 — Recommendation for Beginner
+
+For a Transfer-only page, you probably don’t need CategoryName at all.
+Just load:
+
+ControlNo
+
+Quantity
+
+Location
+
+WarrantyExpiration
+
+
+Example:
+
+var item = await _context.Items
+    .Where(i => i.ControlNo == controlNo)
+    .Select(i => new 
+    {
+        i.ControlNo,
+        i.Quantity,
+        i.Location,
+        i.WarrantyExpiration
+    })
+    .FirstOrDefaultAsync();
+
+Then map to your TransferViewModel:
+
+if(item != null)
+{
+    model.ControlNo = item.ControlNo;
+    model.AvailableQuantity = item.Quantity;
+    model.Warranty = item.WarrantyExpiration?.ToString("yyyy-MM-dd");
+    model.Location = item.Location;
+}
+
+
+---
+
+✅ Summary
+
+The error occurs because CategoryName does not exist in tbl_items.
+
+Either remove it from the query, or join with tbl_category if needed.
+
+For transfer, just use existing columns (ControlNo, Quantity, Location, WarrantyExpiration).
+
+
+
+---
+
+If you want, I can rewrite the full Transfer-only page with Load Item, Update Location, Prevent Over-transfer, using only the correct existing columns so you won’t get SQL errors.
+
+Do you want me to do that?
+
+**
+
 Ah! That Invalid column name 'CategoryName' error usually happens when:
 
 1. Your database table (tbl_Category) does not have a column named CategoryName, or
