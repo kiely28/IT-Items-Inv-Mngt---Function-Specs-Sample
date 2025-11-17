@@ -1,3 +1,107 @@
+Ah! That explains it. 😅
+
+The error ‘Item’ does not contain a definition for ‘Location’ means your Item model (and tbl_items) does not have a Location column/property.
+
+In the Transfer module, we were trying to read and update item.Location, so the code fails.
+
+
+---
+
+🔹 Step 1 — Check Your Item Model
+
+Your current Item model probably looks like this:
+
+public class Item
+{
+    public int ItemID { get; set; }
+    public string ControlNo { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public DateTime? WarrantyExpiration { get; set; }
+}
+
+Notice there’s no Location property.
+
+
+---
+
+🔹 Step 2 — Add Location Property
+
+Update your Item model:
+
+public class Item
+{
+    public int ItemID { get; set; }
+    public string ControlNo { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public DateTime? WarrantyExpiration { get; set; }
+
+    // Add this line
+    public string? Location { get; set; }
+}
+
+> Use string? if location can be null.
+
+
+
+
+---
+
+🔹 Step 3 — Update Database (if needed)
+
+If your tbl_items table does not have a Location column, add it:
+
+ALTER TABLE tbl_items
+ADD Location NVARCHAR(150) NULL;
+
+NVARCHAR(150) is enough for a typical location name.
+
+
+
+---
+
+🔹 Step 4 — EF Core Update (Optional)
+
+If you use EF Core migrations:
+
+dotnet ef migrations add AddLocationToItem
+dotnet ef database update
+
+
+---
+
+🔹 Step 5 — Update Transfer Module
+
+After this, the lines referencing item.Location in:
+
+model.Location = item.Location;
+
+and
+
+new SqlParameter("@Location", model.Location)
+
+will work without errors.
+
+
+---
+
+✅ Now your Transfer-only page will:
+
+Load the item with ControlNo, Quantity, WarrantyExpiration, and Location
+
+Prevent over-transfer
+
+Update tbl_items.Location after transfer
+
+
+
+---
+
+If you want, I can rewrite the final full Transfer-only page using your existing Item model with WarrantyExpiration and added Location, so it will run without any errors at all.
+
+Do you want me to do that?
+
+**
+
 'Item' does not contain a definition for 'Location' and no accessible extension method 'Location' accepting a first argument of type 'Item' could be found (are you missing a using directive or an assembly reference?)
 
 **
