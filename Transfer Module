@@ -1,3 +1,7 @@
+SqlException: Invalid column name 'CategoryName'.
+
+**
+
 Ah! That explains the error perfectly. 😄
 
 Your database column and Item model use WarrantyExpiration instead of Warranty. So anywhere in the controller or view you wrote item.Warranty needs to be updated to item.WarrantyExpiration.
