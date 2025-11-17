@@ -1,3 +1,8 @@
+
+'Item' does not contain a definition for 'Warranty' and no accessible extension method 'Warranty' accepting a first argument of type 'Item' could be found (are you missing a using directive or an assembly reference?)
+
+**
+
 Below is a simple and clean “Transfer Only” View + Logic that:
 
 ✅ Updates the item location in tbl_items
