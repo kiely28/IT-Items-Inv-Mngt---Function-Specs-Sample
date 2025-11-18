@@ -1,3 +1,146 @@
+Here is a clear Input → Process → Output description for your Inventory List module using DataTables + Location filter.
+
+
+---
+
+📥 INPUT
+
+1. Location Dropdown Selection
+
+User selects a location from a dropdown list.
+
+Dropdown values are populated from your SQL stored procedure (example: sp_GetLocations).
+
+
+Example values:
+
+“All”
+
+“IT Office”
+
+“Stockroom”
+
+“MIS”
+
+“Warehouse A”
+
+
+2. System Data Source
+
+Data comes from tbl_items, including fields like:
+
+ItemID
+
+ItemName
+
+SerialNumber
+
+Model
+
+Category
+
+WarrantyExpiration
+
+Location
+
+Status
+
+DateCreated
+
+
+
+3. Filter Parameter
+
+The selected Location value is sent to the controller through AJAX as:
+
+{ "location": "IT Office" }
+
+
+
+---
+
+⚙ PROCESS
+
+1. User selects a location → triggers DataTables reload.
+
+
+2. AJAX request calls your controller method (e.g., /Inventory/GetItemsByLocation).
+
+
+3. Controller passes the selected location to a stored procedure (e.g., sp_GetItemsByLocation).
+
+
+4. Stored procedure filters tbl_items based on the location:
+
+If location = “All” → return all items
+
+Else → return items where tbl_items.Location = selected location
+
+
+
+5. The returned dataset is sent back to DataTables in JSON format.
+
+
+
+
+---
+
+📤 OUTPUT
+
+1. Filtered DataTable Result
+
+The table displays only the items belonging to the selected location.
+
+Example:
+
+Item Name	Model	Serial	Location	Status	Warranty Exp
+
+Lenovo Thinkpad	L14	SN12345	IT Office	Active	2026-05-21
+Logitech Mouse	M325	SN89898	IT Office	Active	2027-01-10
+
+
+
+---
+
+2. Real-Time UI Updates
+
+DataTable refreshes without reloading the page.
+
+Users can:
+
+Search
+
+Sort
+
+Export (if buttons enabled)
+
+Navigate pages
+
+
+
+
+---
+
+3. Accurate Inventory Visibility
+
+Output results allow the user to quickly see:
+
+Which items belong to each location
+
+Current item status
+
+Warranty monitoring
+
+Stock visibility per location
+
+
+
+---
+
+If you want, I can also provide the full working code (Controller + View + Stored Procedure + AJAX).
+
+**
+
 Below is a complete, clean, ready-to-use module for Inventory List using ASP.NET Core MVC 8, EF Core, Stored Procedures, and DataTables (Semantic UI styling).
 
 This includes:
