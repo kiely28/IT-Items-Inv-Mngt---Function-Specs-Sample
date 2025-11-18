@@ -1,3 +1,27 @@
+in my code:
+
+<form method="get" asp-action="Index" class="ui form">
+    <div class="field">
+        <label>Filter by Location</label>
+        <select name="locationFilter" class="ui dropdown" onchange="this.form.submit()">
+            <option value="">-- All Locations --</option>
+
+            @foreach (var loc in ViewBag.Locations)
+            {
+                <option value="@loc" selected="@(Request.Query["locationFilter"] == loc ? "selected" : null)">
+                    @loc
+                </option>
+            }
+        </select>
+    </div>
+</form>
+
+Please check my error:
+The name 'Request' does not exist in the current context
+
+
+**
+
 Here is a clear Input → Process → Output description for your Inventory List module using DataTables + Location filter.
 
 
