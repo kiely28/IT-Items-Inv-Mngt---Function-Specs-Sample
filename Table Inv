@@ -1,3 +1,66 @@
+You're getting the error because Request is not available in Razor views unless you add the proper namespace — or you're inside a context where the view does not automatically bring in Microsoft.AspNetCore.Http.
+
+But there is a cleaner and correct solution.
+
+
+---
+
+✅ ✔ FIX #1 (Best Fix): Use Context.Request instead of Request
+
+In Razor pages (Views), the correct object is:
+
+Context.Request
+
+So change this line:
+
+selected="@(Request.Query["locationFilter"] == loc ? "selected" : null)"
+
+to:
+
+selected="@(Context.Request.Query["locationFilter"] == loc ? "selected" : null)"
+
+
+---
+
+🟢 Final working code:
+
+<form method="get" asp-action="Index" class="ui form">
+    <div class="field">
+        <label>Filter by Location</label>
+        <select name="locationFilter" class="ui dropdown" onchange="this.form.submit()">
+            <option value="">-- All Locations --</option>
+
+            @foreach (var loc in ViewBag.Locations)
+            {
+                <option value="@loc" selected="@(Context.Request.Query["locationFilter"] == loc ? "selected" : null)">
+                    @loc
+                </option>
+            }
+        </select>
+    </div>
+</form>
+
+
+---
+
+🎉 Why this works
+
+In MVC views, the HttpContext object is accessed via Context.
+
+Context.Request always exists in Razor views.
+
+This fixes:
+
+The name 'Request' does not exist in the current context
+
+
+
+---
+
+If you want, I can also update your controller to properly pass the location back into ViewBag for cleaner code.
+
+**
+
 in my code:
 
 <form method="get" asp-action="Index" class="ui form">
