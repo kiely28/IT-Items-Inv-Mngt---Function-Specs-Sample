@@ -1,3 +1,82 @@
+
+Code:
+
+@model List<Item>
+
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css" />
+
+<link rel="stylesheet"
+      href="https://cdn.datatables.net/1.13.6/css/dataTables.semanticui.min.css" />
+
+<div class="ui container">
+    <h2 class="ui header">Inventory List</h2>
+
+    <form method="get" asp-action="Index" class="ui form">
+        <div class="field">
+            <label>Filter by Location</label>
+
+            <select name="locationFilter" class="ui dropdown" onchange="this.form.submit()">
+                <option value="">-- All Locations --</option>
+
+                @foreach (var loc in ViewBag.Locations)
+                {
+                    <option value="@loc" selected="@(Request.Query["locationFilter"] == loc)">
+                        @loc
+                    </option>
+                }
+            </select>
+        </div>
+    </form>
+
+    <table id="inventoryTable" class="ui celled table">
+        <thead>
+            <tr>
+                <th>Item Name</th>
+                <th>Category</th>
+                <th>Serial Number</th>
+                <th>Warranty Expiration</th>
+                <th>Qty</th>
+                <th>Location</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.ItemName</td>
+                    <td>@item.Category</td>
+                    <td>@item.SerialNumber</td>
+                    <td>@item.WarrantyExpiration?.ToString("yyyy-MM-dd")</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.Location</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.js"></script>
+
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.semanticui.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        $('#inventoryTable').DataTable();
+        $('.ui.dropdown').dropdown();
+    });
+</script>
+
+This line:  <option value="@loc" selected="@(Request.Query["locationFilter"] == loc)">
+
+Error: The name 'Request' does not exist in the current context
+
+**
+
 You are getting this error because Database.SqlQuery<T>() is only available in EF Core 8, but only when your DbContext inherits from:
 
 ✔ DbContext
