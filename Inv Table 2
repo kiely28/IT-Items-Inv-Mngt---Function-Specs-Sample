@@ -1,3 +1,80 @@
+You are getting the error because Razor views in ASP.NET Core MVC 8 no longer expose Request directly unless you reference it from the correct scope.
+
+To fix it, you must use:
+
+✔ Context.Request
+OR
+✔ ViewContext.HttpContext.Request
+
+
+---
+
+✅ Simplest Fix
+
+Replace your line:
+
+<option value="@loc" selected="@(Request.Query["locationFilter"] == loc)">
+
+With:
+
+<option value="@loc" selected="@(Context.Request.Query["locationFilter"] == loc)">
+
+✔ Works in MVC 6–8
+✔ No extra code needed
+
+
+---
+
+🟦 Full Corrected Code Block
+
+<option value="@loc" selected="@(Context.Request.Query["locationFilter"] == loc)">
+    @loc
+</option>
+
+
+---
+
+🟩 Alternative Working Version
+
+<option value="@loc" selected="@(ViewContext.HttpContext.Request.Query["locationFilter"] == loc)">
+    @loc
+</option>
+
+
+---
+
+🟧 Even Cleaner Way (Recommended)
+
+Instead of checking the query directly inside Razor, you can pass the selected filter from the controller:
+
+Controller
+
+ViewBag.SelectedLocation = locationFilter;
+
+View
+
+<option value="@loc" selected="@(ViewBag.SelectedLocation == loc)">
+    @loc
+</option>
+
+This avoids direct Request access and keeps Razor clean.
+
+
+---
+
+🎉 Your dropdown will now work and pre-select the location properly.
+
+If you want, I can also add:
+
+✔ Category filter
+✔ Warranty expired filter
+✔ Search box
+✔ Export to Excel/PDF
+
+Just tell me!
+
+**
+
 
 Code:
 
