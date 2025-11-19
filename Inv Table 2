@@ -1,3 +1,7 @@
+'ApplicationDbContext' does not contain a definition for 'Database' and no accessible extension method 'Database' accepting a first argument of type 'ApplicationDbContext' could be found (are you missing a using directive or an assembly reference?)
+
+**
+
 Below is a complete and clean module for Inventory List using:
 
 ✔ ASP.NET Core MVC 8
