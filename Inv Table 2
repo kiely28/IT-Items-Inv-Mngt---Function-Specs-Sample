@@ -1,0 +1,246 @@
+Below is a complete and clean module for Inventory List using:
+
+✔ ASP.NET Core MVC 8
+✔ EF Core
+✔ SQL Server Stored Procedures
+✔ DataTables + Semantic UI
+✔ Location dropdown filter
+✔ Loads data from tbl_items
+
+
+---
+
+✅ 1. SQL Server Stored Procedures
+
+a. SP_GetLocations
+
+Returns DISTINCT locations:
+
+CREATE PROCEDURE sp_getLocations
+AS
+BEGIN
+    SELECT DISTINCT Location 
+    FROM tbl_items
+    WHERE Location IS NOT NULL AND Location <> ''
+    ORDER BY Location;
+END
+
+
+---
+
+b. SP_GetInventoryList
+
+Supports filtering by location:
+
+CREATE PROCEDURE sp_getInventoryList
+    @Location NVARCHAR(100) = NULL
+AS
+BEGIN
+    SELECT 
+        ItemId,
+        ItemName,
+        Category,
+        SerialNumber,
+        WarrantyExpiration,
+        Quantity,
+        Location
+    FROM tbl_items
+    WHERE (@Location IS NULL OR Location = @Location)
+    ORDER BY ItemName;
+END
+
+
+---
+
+✅ 2. Model: Item.cs
+
+public class Item
+{
+    public int ItemId { get; set; }
+    public string ItemName { get; set; }
+    public string Category { get; set; }
+    public string SerialNumber { get; set; }
+    public DateTime? WarrantyExpiration { get; set; }
+    public int Quantity { get; set; }
+    public string Location { get; set; }
+}
+
+
+---
+
+✅ 3. DbContext (ApplicationDbContext.cs)
+
+Add to your context:
+
+public DbSet<Item> Items { get; set; }
+
+public async Task<List<Item>> GetInventoryList(string location)
+{
+    var param = new SqlParameter("@Location", string.IsNullOrEmpty(location) ? DBNull.Value : location);
+
+    return await Items.FromSqlRaw("EXEC sp_getInventoryList @Location", param).ToListAsync();
+}
+
+public async Task<List<string>> GetLocations()
+{
+    return await this.Database.SqlQuery<string>("EXEC sp_getLocations").ToListAsync();
+}
+
+
+---
+
+✅ 4. Controller: InventoryController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+
+public class InventoryController : Controller
+{
+    private readonly ApplicationDbContext _context;
+
+    public InventoryController(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<IActionResult> Index(string locationFilter)
+    {
+        // Load locations for dropdown
+        ViewBag.Locations = await _context.GetLocations();
+
+        // Load inventory list
+        var items = await _context.GetInventoryList(locationFilter);
+
+        return View(items);
+    }
+}
+
+
+---
+
+✅ 5. View: Index.cshtml (Inventory List)
+
+Includes:
+
+✔ Dropdown filter
+✔ Auto-submit on change
+✔ Semantic UI + DataTables table
+
+Make sure you include Semantic UI + DataTables scripts.
+
+
+---
+
+@model List<Item>
+
+<link rel="stylesheet" 
+      href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css" />
+
+<link rel="stylesheet" 
+      href="https://cdn.datatables.net/1.13.6/css/dataTables.semanticui.min.css" />
+
+<div class="ui container">
+    <h2 class="ui header">Inventory List</h2>
+
+    <form method="get" asp-action="Index" class="ui form">
+        <div class="field">
+            <label>Filter by Location</label>
+
+            <select name="locationFilter" class="ui dropdown" onchange="this.form.submit()">
+                <option value="">-- All Locations --</option>
+
+                @foreach (var loc in ViewBag.Locations)
+                {
+                    <option value="@loc" selected="@(Request.Query["locationFilter"] == loc)">
+                        @loc
+                    </option>
+                }
+            </select>
+        </div>
+    </form>
+
+    <table id="inventoryTable" class="ui celled table">
+        <thead>
+            <tr>
+                <th>Item Name</th>
+                <th>Category</th>
+                <th>Serial Number</th>
+                <th>Warranty Expiration</th>
+                <th>Qty</th>
+                <th>Location</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.ItemName</td>
+                    <td>@item.Category</td>
+                    <td>@item.SerialNumber</td>
+                    <td>@item.WarrantyExpiration?.ToString("yyyy-MM-dd")</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.Location</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.js"></script>
+
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.semanticui.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+        $('#inventoryTable').DataTable();
+        $('.ui.dropdown').dropdown();
+    });
+</script>
+
+
+---
+
+✅ 6. Folder Structure
+
+Controllers/
+   InventoryController.cs
+
+Views/
+   Inventory/
+      Index.cshtml
+
+Models/
+   Item.cs
+
+Data/
+   ApplicationDbContext.cs
+
+
+---
+
+🎉 DONE!
+
+You now have a complete Inventory List Module with:
+
+✔ Stored procedures
+✔ Location dropdown
+✔ DataTables + Semantic UI
+✔ MVC 8 + EF Core
+
+
+---
+
+If you want, I can also generate:
+
+📌 Export to Excel / PDF
+📌 Edit / Delete buttons
+📌 Modal popup for item details
+📌 Filtering by category, warranty expired, etc
+📌 Server-side DataTables
+
+Would you like to continue?
