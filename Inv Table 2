@@ -1,3 +1,132 @@
+You are getting this error because Database.SqlQuery<T>() is only available in EF Core 8, but only when your DbContext inherits from:
+
+✔ DbContext
+NOT from IdentityDbContext, ApiAuthorizationDbContext, or other custom context types.
+
+OR your project may be missing:
+
+using Microsoft.EntityFrameworkCore;
+
+
+---
+
+✅ Fix Below — Use EF Core 8 Correct Methods
+
+EF Core 8 replaces Database.SqlQuery<T>() with Database.SqlQueryRaw<T>().
+
+
+---
+
+✅ 1. Replace GetLocations() with Correct EF Core 8 Syntax
+
+🔥 Correct Working Code
+
+public async Task<List<string>> GetLocations()
+{
+    return await this.Database
+        .SqlQueryRaw<string>("EXEC sp_getLocations")
+        .ToListAsync();
+}
+
+
+---
+
+❗ If Your DbContext Inherits from IdentityDbContext
+
+Add this using:
+
+using Microsoft.EntityFrameworkCore;
+
+Make sure your context header looks like:
+
+public class ApplicationDbContext : IdentityDbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<Item> Items { get; set; }
+}
+
+✔ It still has .Database
+❗ Unless your file is missing the EF Core namespace.
+
+
+---
+
+🔥 2. Full Updated ApplicationDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
+
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<Item> Items { get; set; }
+
+    // Inventory List SP
+    public async Task<List<Item>> GetInventoryList(string location)
+    {
+        var param = new SqlParameter("@Location", 
+            string.IsNullOrEmpty(location) ? DBNull.Value : location);
+
+        return await Items
+            .FromSqlRaw("EXEC sp_getInventoryList @Location", param)
+            .ToListAsync();
+    }
+
+    // Locations SP
+    public async Task<List<string>> GetLocations()
+    {
+        return await this.Database
+            .SqlQueryRaw<string>("EXEC sp_getLocations")
+            .ToListAsync();
+    }
+}
+
+
+---
+
+✔ Common Causes of This Error
+
+1. Missing using
+
+using Microsoft.EntityFrameworkCore;
+
+2. Wrong context type
+
+Your DbContext must inherit:
+
+public class ApplicationDbContext : DbContext
+
+Or:
+
+public class ApplicationDbContext : IdentityDbContext
+
+Both support .Database
+
+3. Wrong project reference
+
+Make sure the project references:
+
+Microsoft.EntityFrameworkCore
+Microsoft.EntityFrameworkCore.SqlServer
+
+
+---
+
+If you want, I can verify your ApplicationDbContext.cs and fix it 100%.
+
+Just paste it here.
+
+**
+
+
 'ApplicationDbContext' does not contain a definition for 'Database' and no accessible extension method 'Database' accepting a first argument of type 'ApplicationDbContext' could be found (are you missing a using directive or an assembly reference?)
 
 **
