@@ -1,3 +1,126 @@
+The error:
+
+SqlNullValueException: Data is Null. This method or property cannot be called on Null values.
+
+means that your stored procedure sp_GetAllItems is returning a NULL value in a column, but your Item model property is NOT nullable.
+
+This ALWAYS happens when:
+
+✔ A column in tbl_items is NULL
+❌ But your C# model property is not allowed to be NULL
+
+
+---
+
+✅ 1. First: Show me your Item model
+
+But before that, here is the fix.
+
+
+---
+
+✅ 2. This is the most likely cause:
+
+Your Item.cs probably looks like:
+
+public string Category { get; set; }  // non-nullable
+public string SerialNumber { get; set; } // non-nullable
+public DateTime WarrantyExpiration { get; set; } // non-nullable
+public int Quantity { get; set; } // non-nullable
+public string Location { get; set; } // non-nullable
+
+But your database has NULL in one of these columns.
+
+So EF throws:
+
+SqlNullValueException
+
+
+---
+
+✅ 3. Solution: Make nullable properties nullable
+
+Modify the model:
+
+public class Item
+{
+    public int ItemID { get; set; }
+
+    public string? ItemName { get; set; }
+    public int? CategoryID { get; set; }
+    public string? Category { get; set; }
+    public string? SerialNumber { get; set; }
+
+    public DateTime? WarrantyExpiration { get; set; }
+
+    public int? Quantity { get; set; }
+
+    public string? Status { get; set; }
+    public string? Location { get; set; }
+
+    public DateTime? AddedDate { get; set; }
+    public string? ControlNo { get; set; }
+}
+
+✔ Everything that can be NULL in the database must be nullable in your model (?).
+✔ If not, EF Core fails.
+
+
+---
+
+✅ 4. Most common column causing this: WarrantyExpiration
+
+You generate it only when adding items.
+
+Any older rows probably have NULL warranty dates.
+
+So this property MUST be:
+
+public DateTime? WarrantyExpiration { get; set; }
+
+
+---
+
+✅ 5. If the error still persists, find the exact null column
+
+Insert a quick debug query:
+
+var tableCheck = await _context.Items
+    .FromSqlRaw("EXEC sp_GetAllItems")
+    .ToListAsync();
+
+Then check each row for NULL fields that map to non-nullable model properties.
+
+
+---
+
+🟥 IMPORTANT: Your stored procedure might not return all fields
+
+Make sure sp_GetAllItems returns exactly match model properties:
+
+Example expected columns:
+
+ItemID
+ItemName
+CategoryID
+Category
+Quantity
+Status
+SerialNumber
+WarrantyExpiration
+Location
+AddedDate
+ControlNo
+
+If even one column that EF expects is missing or NULL, your model must allow null values.
+
+
+---
+
+👍 Send me your Item.cs and I will fix it perfectly.
+
+**
+
 Code: 
 
 using Microsoft.AspNetCore.Mvc;
