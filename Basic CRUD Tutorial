@@ -1,0 +1,444 @@
+Nice — I’ll give you a compact, practical step-by-step tutorial to build a basic CRUD app using ASP.NET Core MVC 8 + EF Core 8 while using stored procedures in SQL Server for the database operations. I’ll also call out an important limitation (EF Core ≠ EF6) and show the recommended patterns to call stored procedures from EF Core. Wherever a web source strengthens a point I’ll cite it.
+
+
+---
+
+TL;DR / Overview
+
+1. Create SQL table tbl_Items and stored procedures (sp_GetAllItems, sp_GetItemById, sp_InsertItem, sp_UpdateItem, sp_DeleteItem).
+
+
+2. Create ASP.NET Core MVC 8 project.
+
+
+3. Add EF Core 8 and SQL Server packages.
+
+
+4. Create Item model and ApplicationDbContext.
+
+
+5. Use EF Core to call stored procedures: FromSqlRaw / FromSqlInterpolated for reads, and Database.ExecuteSqlRawAsync / ExecuteSqlInterpolatedAsync for CUD operations.
+
+
+6. Build MVC controller + views that call those DbContext methods.
+
+
+
+Important note: EF6 had built-in fluent mapping to map insert/update/delete directly to stored procedures. EF Core historically doesn’t provide the same automatic mapping for CUD via Fluent API — instead you call stored procedures directly from code (or use ADO). I’ll show the safe, modern approach. 
+
+
+---
+
+1) Create the SQL Server table + stored procedures
+
+Example SQL (run in SSMS):
+
+CREATE TABLE dbo.tbl_Items
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(200) NOT NULL,
+    Description NVARCHAR(MAX) NULL,
+    Quantity INT NOT NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+GO
+
+-- Read all
+CREATE PROCEDURE dbo.sp_GetAllItems
+AS
+BEGIN
+    SELECT Id, Name, Description, Quantity, CreatedAt
+    FROM dbo.tbl_Items
+    ORDER BY Id;
+END
+GO
+
+-- Read by id
+CREATE PROCEDURE dbo.sp_GetItemById
+    @Id INT
+AS
+BEGIN
+    SELECT Id, Name, Description, Quantity, CreatedAt
+    FROM dbo.tbl_Items
+    WHERE Id = @Id;
+END
+GO
+
+-- Insert
+CREATE PROCEDURE dbo.sp_InsertItem
+    @Name NVARCHAR(200),
+    @Description NVARCHAR(MAX),
+    @Quantity INT
+AS
+BEGIN
+    INSERT INTO dbo.tbl_Items(Name, Description, Quantity)
+    VALUES(@Name, @Description, @Quantity);
+
+    SELECT SCOPE_IDENTITY() AS NewId; -- return new id
+END
+GO
+
+-- Update
+CREATE PROCEDURE dbo.sp_UpdateItem
+    @Id INT,
+    @Name NVARCHAR(200),
+    @Description NVARCHAR(MAX),
+    @Quantity INT
+AS
+BEGIN
+    UPDATE dbo.tbl_Items
+    SET Name = @Name,
+        Description = @Description,
+        Quantity = @Quantity
+    WHERE Id = @Id;
+END
+GO
+
+-- Delete
+CREATE PROCEDURE dbo.sp_DeleteItem
+    @Id INT
+AS
+BEGIN
+    DELETE FROM dbo.tbl_Items WHERE Id = @Id;
+END
+GO
+
+
+---
+
+2) Create the ASP.NET Core MVC 8 project & add packages
+
+From command line (or use Visual Studio):
+
+dotnet new mvc -n InventoryApp
+cd InventoryApp
+
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer --version 8.*
+dotnet add package Microsoft.EntityFrameworkCore.Tools --version 8.*
+
+(You can scaffold controllers/views later — I’ll show manual controller code.)
+
+
+---
+
+3) Create the Item model
+
+Models/Item.cs
+
+public class Item
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = null!;
+    public string? Description { get; set; }
+    public int Quantity { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+
+---
+
+4) Setup ApplicationDbContext
+
+Data/ApplicationDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options) { }
+
+    public DbSet<Item> Items { get; set; } = null!;
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        // If you want to map a query type / keyless type for SP results, you can:
+        // Example: modelBuilder.Entity<Item>().HasNoKey(); // but only for keyless query types
+        // For normal entity with PK use the DbSet<Item> declared above.
+        //
+        // Note: EF Core doesn't allow fluent mapping of insert/update/delete to stored
+        // procedures the same way EF6 did. So we'll call stored procedures explicitly.
+        //
+        // See EF Core docs: you can run SQL queries and map results through FromSqlRaw.
+    }
+}
+
+Register it in Program.cs (or Startup.cs depending on project template):
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllersWithViews();
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var app = builder.Build();
+// ... usual middleware + endpoints
+
+Add connection string to appsettings.json.
+
+Reference: EF Core docs on running SQL queries and mapping results. 
+
+
+---
+
+5) Call stored procedures from EF Core
+
+Read (list and single)
+
+Use FromSqlRaw or FromSqlInterpolated on a DbSet<T> to read results of a stored procedure:
+
+// Get all items
+var items = await _context.Items
+    .FromSqlRaw("EXEC dbo.sp_GetAllItems")
+    .AsNoTracking()
+    .ToListAsync();
+
+// Get single item by id
+var id = 5;
+var item = await _context.Items
+    .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+    .AsNoTracking()
+    .FirstOrDefaultAsync();
+
+Notes
+
+FromSqlRaw and FromSqlInterpolated require the returned columns to match the entity type (names / types). 
+
+
+Insert / Update / Delete
+
+Prefer: call Database.ExecuteSqlInterpolatedAsync (or ExecuteSqlRawAsync) to execute stored procs that don’t return full entity sets, or use FromSql for procs that return rows.
+
+Insert example (returns new id):
+
+// Insert and get new id
+var name = "New item";
+var description = "desc";
+var qty = 10;
+
+var result = await _context.Database
+    .ExecuteSqlInterpolatedAsync($@"
+        EXEC dbo.sp_InsertItem 
+            @Name = {name}, 
+            @Description = {description}, 
+            @Quantity = {qty}");
+
+If your stored proc returns a scalar (e.g. new id), EF Core ExecuteSql... does not return rows. In that case you can use ADO.NET via the DbConnection:
+
+int newId;
+using var conn = _context.Database.GetDbConnection();
+await conn.OpenAsync();
+using var cmd = conn.CreateCommand();
+cmd.CommandText = "dbo.sp_InsertItem";
+cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+cmd.Parameters.Add(new SqlParameter("@Name", name));
+cmd.Parameters.Add(new SqlParameter("@Description", (object?)description ?? DBNull.Value));
+cmd.Parameters.Add(new SqlParameter("@Quantity", qty));
+
+// If the proc SELECTs the new id, you can execute reader:
+using var reader = await cmd.ExecuteReaderAsync();
+await reader.ReadAsync();
+newId = Convert.ToInt32(reader["NewId"]);
+
+Update example:
+
+await _context.Database.ExecuteSqlInterpolatedAsync(
+    $"EXEC dbo.sp_UpdateItem @Id = {item.Id}, @Name = {item.Name}, @Description = {item.Description}, @Quantity = {item.Quantity}");
+
+Delete example:
+
+await _context.Database.ExecuteSqlInterpolatedAsync(
+    $"EXEC dbo.sp_DeleteItem @Id = {id}");
+
+References and deeper how-to for calling stored procs from EF Core. 
+
+
+---
+
+6) Example Controller (ItemsController)
+
+Controllers/ItemsController.cs (minimal, async):
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+
+public class ItemsController : Controller
+{
+    private readonly ApplicationDbContext _context;
+    public ItemsController(ApplicationDbContext context) => _context = context;
+
+    // Index (list)
+    public async Task<IActionResult> Index()
+    {
+        var items = await _context.Items
+            .FromSqlRaw("EXEC dbo.sp_GetAllItems")
+            .AsNoTracking()
+            .ToListAsync();
+
+        return View(items);
+    }
+
+    // Details
+    public async Task<IActionResult> Details(int id)
+    {
+        var item = await _context.Items
+            .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (item == null) return NotFound();
+        return View(item);
+    }
+
+    // GET Create
+    public IActionResult Create() => View();
+
+    // POST Create
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create([Bind("Name,Description,Quantity")] Item item)
+    {
+        if (!ModelState.IsValid) return View(item);
+
+        // Use ADO.NET approach if your proc returns new id; otherwise ExecuteSqlInterpolated
+        using var conn = _context.Database.GetDbConnection();
+        await conn.OpenAsync();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = "dbo.sp_InsertItem";
+        cmd.CommandType = System.Data.CommandType.StoredProcedure;
+        cmd.Parameters.Add(new SqlParameter("@Name", item.Name));
+        cmd.Parameters.Add(new SqlParameter("@Description", (object?)item.Description ?? DBNull.Value));
+        cmd.Parameters.Add(new SqlParameter("@Quantity", item.Quantity));
+
+        using var reader = await cmd.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            // optionally read returned NewId
+            var newId = Convert.ToInt32(reader["NewId"]);
+            // redirect to details
+            return RedirectToAction(nameof(Details), new { id = newId });
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    // GET Edit
+    public async Task<IActionResult> Edit(int id)
+    {
+        var item = await _context.Items
+            .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (item == null) return NotFound();
+        return View(item);
+    }
+
+    // POST Edit
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Description,Quantity")] Item item)
+    {
+        if (id != item.Id) return BadRequest();
+        if (!ModelState.IsValid) return View(item);
+
+        await _context.Database.ExecuteSqlInterpolatedAsync(
+            $"EXEC dbo.sp_UpdateItem @Id = {item.Id}, @Name = {item.Name}, @Description = {item.Description}, @Quantity = {item.Quantity}");
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    // GET Delete
+    public async Task<IActionResult> Delete(int id)
+    {
+        var item = await _context.Items
+            .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (item == null) return NotFound();
+        return View(item);
+    }
+
+    // POST DeleteConfirmed
+    [HttpPost, ActionName("Delete")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteConfirmed(int id)
+    {
+        await _context.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.sp_DeleteItem @Id = {id}");
+        return RedirectToAction(nameof(Index));
+    }
+}
+
+
+---
+
+7) Views
+
+Use normal Razor views created by scaffolding or hand-write minimal forms. The controller above expects typical Index, Details, Create, Edit, Delete views. You can scaffold them in Visual Studio using the ItemsController and Item model as usual, then replace EF usage with your stored-proc calls if scaffold used direct DbContext operations.
+
+For a starter, you can scaffold CRUD views and then adapt the controller to call SPs instead of direct _context.Add/SaveChanges.
+
+Microsoft's official CRUD tutorial for MVC + EF Core is a good companion when building views. 
+
+
+---
+
+8) Where EF Core differs from EF6 (why we call procs explicitly)
+
+EF6 allowed mapping CUD operations to stored procedures with the Fluent API (code-first). EF Core does not provide the same automatic, built-in Fluent mapping for CUD in the same way. The practical effect: in EF Core you generally call stored procs explicitly (via FromSql* or Database.ExecuteSql* / raw ADO) when you want to use them. 
+
+
+
+---
+
+9) Tips, common pitfalls, and best practices
+
+Parameter safety: use FromSqlInterpolated or add SqlParameter objects to avoid SQL injection.
+
+Mapping columns: columns returned by the stored proc must match the entity property names and types or use a keyless type. 
+
+Transactions: If you need transactions spanning stored-proc calls, use _context.Database.BeginTransactionAsync() and commit/rollback.
+
+Performance: Stored procedures can help for complex logic, but modern EF Core LINQ often produces efficient SQL — measure before rewriting everything to SPs.
+
+Logging: enable EF logging to inspect generated SQL or SP calls.
+
+Testing: write integration tests hitting a test DB to ensure SPs and EF calls work together.
+
+
+
+---
+
+10) Quick links / references
+
+EF Core: SQL queries (FromSqlRaw, etc.) — Microsoft docs. 
+
+ASP.NET Core MVC + EF Core CRUD tutorial — Microsoft docs. 
+
+EF Core "what's new" / EF8 reference. 
+
+Discussion / issue about mapping CUD to stored procedures in EF Core (historical background). 
+
+StackOverflow & practical Q&A on calling stored procedures with EF Core. 
+
+
+
+---
+
+Wrap-up
+
+If you want, I can:
+
+Generate complete Razor views for Index/Create/Edit/Details/Delete that match the sample controller above.
+
+Create a full sample repo (all files) you can clone and run locally.
+
+Show the ADO.NET version for insert that reads output parameters or returns the new id.
+
+
+Which of those would you like me to produce next? (I can create the views or the full repository right here.)
