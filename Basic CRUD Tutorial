@@ -1,3 +1,483 @@
+Absolutely — here is a complete, clean, ready-to-copy CRUD template using ASP.NET Core MVC 8 + EF Core 8 + Stored Procedures.
+Everything is arranged in real project structure so you can paste it directly into your app.
+
+
+---
+
+✅ FULL PROJECT TEMPLATE (COPIABLE FORMAT)
+
+ASP.NET Core MVC 8 + EF Core 8 + SQL Stored Procedures
+
+
+---
+
+📌 1. SQL Server — Create Table + Stored Procedures
+
+Copy & run in SSMS:
+
+CREATE TABLE dbo.tbl_Items
+(
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    Name NVARCHAR(200) NOT NULL,
+    Description NVARCHAR(MAX) NULL,
+    Quantity INT NOT NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+GO
+
+-- READ ALL
+CREATE PROCEDURE dbo.sp_GetAllItems
+AS
+BEGIN
+    SELECT Id, Name, Description, Quantity, CreatedAt
+    FROM dbo.tbl_Items
+    ORDER BY Id;
+END
+GO
+
+-- READ BY ID
+CREATE PROCEDURE dbo.sp_GetItemById
+    @Id INT
+AS
+BEGIN
+    SELECT Id, Name, Description, Quantity, CreatedAt
+    FROM dbo.tbl_Items
+    WHERE Id = @Id;
+END
+GO
+
+-- INSERT
+CREATE PROCEDURE dbo.sp_InsertItem
+    @Name NVARCHAR(200),
+    @Description NVARCHAR(MAX),
+    @Quantity INT
+AS
+BEGIN
+    INSERT INTO dbo.tbl_Items(Name, Description, Quantity)
+    VALUES(@Name, @Description, @Quantity);
+
+    SELECT SCOPE_IDENTITY() AS NewId;
+END
+GO
+
+-- UPDATE
+CREATE PROCEDURE dbo.sp_UpdateItem
+    @Id INT,
+    @Name NVARCHAR(200),
+    @Description NVARCHAR(MAX),
+    @Quantity INT
+AS
+BEGIN
+    UPDATE dbo.tbl_Items
+    SET Name = @Name,
+        Description = @Description,
+        Quantity = @Quantity
+    WHERE Id = @Id;
+END
+GO
+
+-- DELETE
+CREATE PROCEDURE dbo.sp_DeleteItem
+    @Id INT
+AS
+BEGIN
+    DELETE FROM dbo.tbl_Items WHERE Id = @Id;
+END
+GO
+
+
+---
+
+📌 2. appsettings.json (Connection String)
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SERVER;Database=InventoryDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+
+  "AllowedHosts": "*"
+}
+
+
+---
+
+📌 3. Program.cs
+
+using Microsoft.EntityFrameworkCore;
+using InventoryApp.Data;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllersWithViews();
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+}
+
+app.UseStaticFiles();
+app.UseRouting();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Items}/{action=Index}/{id?}");
+
+app.Run();
+
+
+---
+
+📌 4. Models/Item.cs
+
+namespace InventoryApp.Models
+{
+    public class Item
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = null!;
+        public string? Description { get; set; }
+        public int Quantity { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+}
+
+
+---
+
+📌 5. Data/ApplicationDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using InventoryApp.Models;
+
+namespace InventoryApp.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options) { }
+
+        public DbSet<Item> Items { get; set; }
+    }
+}
+
+
+---
+
+📌 6. Controllers/ItemsController.cs
+
+💯 Calls Stored Procedures only — no EF Add/Update/Delete() used
+
+using InventoryApp.Data;
+using InventoryApp.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+
+namespace InventoryApp.Controllers
+{
+    public class ItemsController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public ItemsController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // READ ALL
+        public async Task<IActionResult> Index()
+        {
+            var items = await _context.Items
+                .FromSqlRaw("EXEC dbo.sp_GetAllItems")
+                .AsNoTracking()
+                .ToListAsync();
+
+            return View(items);
+        }
+
+        // READ BY ID
+        public async Task<IActionResult> Details(int id)
+        {
+            var item = await _context.Items
+                .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (item == null) return NotFound();
+
+            return View(item);
+        }
+
+        // CREATE (GET)
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // CREATE (POST)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Item item)
+        {
+            if (!ModelState.IsValid)
+                return View(item);
+
+            using var conn = _context.Database.GetDbConnection();
+            await conn.OpenAsync();
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "dbo.sp_InsertItem";
+            cmd.CommandType = System.Data.CommandType.StoredProcedure;
+
+            cmd.Parameters.Add(new SqlParameter("@Name", item.Name));
+            cmd.Parameters.Add(new SqlParameter("@Description", (object?)item.Description ?? DBNull.Value));
+            cmd.Parameters.Add(new SqlParameter("@Quantity", item.Quantity));
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            int newId = 0;
+
+            if (await reader.ReadAsync())
+                newId = Convert.ToInt32(reader["NewId"]);
+
+            return RedirectToAction(nameof(Details), new { id = newId });
+        }
+
+        // EDIT (GET)
+        public async Task<IActionResult> Edit(int id)
+        {
+            var item = await _context.Items
+                .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (item == null) return NotFound();
+
+            return View(item);
+        }
+
+        // EDIT (POST)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Item item)
+        {
+            if (id != item.Id) return BadRequest();
+
+            await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"EXEC dbo.sp_UpdateItem @Id = {item.Id}, @Name = {item.Name}, @Description = {item.Description}, @Quantity = {item.Quantity}");
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // DELETE (GET)
+        public async Task<IActionResult> Delete(int id)
+        {
+            var item = await _context.Items
+                .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (item == null) return NotFound();
+
+            return View(item);
+        }
+
+        // DELETE (POST)
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"EXEC dbo.sp_DeleteItem @Id = {id}");
+
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
+
+
+---
+
+📌 7. Views — Fully Copiable CRUD Views
+
+Create folder:
+Views/Items/
+
+
+---
+
+✅ Views/Items/Index.cshtml
+
+@model IEnumerable<InventoryApp.Models.Item>
+
+<h2>Items List</h2>
+
+<p>
+    <a class="btn btn-primary" href="/Items/Create">Create New</a>
+</p>
+
+<table class="table table-bordered">
+    <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Quantity</th>
+        <th>Created</th>
+        <th></th>
+    </tr>
+
+@foreach (var item in Model)
+{
+    <tr>
+        <td>@item.Name</td>
+        <td>@item.Description</td>
+        <td>@item.Quantity</td>
+        <td>@item.CreatedAt</td>
+        <td>
+            <a href="/Items/Details/@item.Id">Details</a> |
+            <a href="/Items/Edit/@item.Id">Edit</a> |
+            <a href="/Items/Delete/@item.Id">Delete</a>
+        </td>
+    </tr>
+}
+</table>
+
+
+---
+
+✅ Views/Items/Create.cshtml
+
+@model InventoryApp.Models.Item
+
+<h2>Create Item</h2>
+
+<form method="post">
+    <div class="form-group">
+        <label>Name</label>
+        <input class="form-control" name="Name" />
+    </div>
+
+    <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-control" name="Description"></textarea>
+    </div>
+
+    <div class="form-group">
+        <label>Quantity</label>
+        <input class="form-control" name="Quantity" type="number" />
+    </div>
+
+    <button type="submit" class="btn btn-success">Save</button>
+</form>
+
+
+---
+
+✅ Views/Items/Edit.cshtml
+
+@model InventoryApp.Models.Item
+
+<h2>Edit Item</h2>
+
+<form method="post">
+    <input type="hidden" name="Id" value="@Model.Id" />
+
+    <div class="form-group">
+        <label>Name</label>
+        <input class="form-control" name="Name" value="@Model.Name" />
+    </div>
+
+    <div class="form-group">
+        <label>Description</label>
+        <textarea class="form-control" name="Description">@Model.Description</textarea>
+    </div>
+
+    <div class="form-group">
+        <label>Quantity</label>
+        <input class="form-control" name="Quantity" type="number" value="@Model.Quantity" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Update</button>
+</form>
+
+
+---
+
+✅ Views/Items/Details.cshtml
+
+@model InventoryApp.Models.Item
+
+<h2>Item Details</h2>
+
+<p><strong>Name:</strong> @Model.Name</p>
+<p><strong>Description:</strong> @Model.Description</p>
+<p><strong>Quantity:</strong> @Model.Quantity</p>
+<p><strong>Created:</strong> @Model.CreatedAt</p>
+
+<p>
+    <a href="/Items/Edit/@Model.Id" class="btn btn-warning">Edit</a>
+    <a href="/Items/Index" class="btn btn-secondary">Back</a>
+</p>
+
+
+---
+
+✅ Views/Items/Delete.cshtml
+
+@model InventoryApp.Models.Item
+
+<h2>Delete Item</h2>
+
+<p>Are you sure you want to delete this item?</p>
+
+<p><b>@Model.Name</b></p>
+
+<form method="post">
+    <button type="submit" class="btn btn-danger">Delete</button>
+    <a href="/Items/Index" class="btn btn-secondary">Cancel</a>
+</form>
+
+
+---
+
+🎉 DONE!
+
+You now have:
+
+✔ Complete SQL
+✔ Complete Model
+✔ Complete DbContext
+✔ Complete Controller with Stored Procedures
+✔ Complete CRUD Razor Views
+✔ Fully working ASP.NET Core MVC 8 CRUD app
+
+
+---
+
+📌 Want me to zip all files into a single downloadable folder?
+
+I can also generate:
+
+✅ Semantic UI + DataTables version
+✅ Bootstrap 5 styled UI
+✅ Version with Repository + Service layers
+✅ Version with Output Parameters instead of SELECT SCOPE_IDENTITY
+
+Just tell me!
+
+
+**
+
 Nice — I’ll give you a compact, practical step-by-step tutorial to build a basic CRUD app using ASP.NET Core MVC 8 + EF Core 8 while using stored procedures in SQL Server for the database operations. I’ll also call out an important limitation (EF Core ≠ EF6) and show the recommended patterns to call stored procedures from EF Core. Wherever a web source strengthens a point I’ll cite it.
 
 
