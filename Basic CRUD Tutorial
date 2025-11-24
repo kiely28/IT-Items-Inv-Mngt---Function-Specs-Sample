@@ -1,3 +1,10 @@
+Error when Saving, Click Details, Edit and Delete.
+
+InvalidOperationException: 'FromSql' or 'SqlQuery' was called with non-composable SQL and with a query composing over it. Consider calling 'AsEnumerable' after the method to perform the composition on the client side.
+
+
+**
+
 Absolutely — here is a complete, clean, ready-to-copy CRUD template using ASP.NET Core MVC 8 + EF Core 8 + Stored Procedures.
 Everything is arranged in real project structure so you can paste it directly into your app.
 
