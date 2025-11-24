@@ -1,3 +1,129 @@
+Got it! 👍
+You want to add a table below your Create Item form that shows all records from tbl_items where Status = 'Active'.
+
+I will give you:
+
+✔ Controller update
+
+✔ SQL to get Active Items
+
+✔ Razor code to display the table BELOW your Create form
+
+✔ Works with your existing stored-procedure setup
+
+
+
+---
+
+✅ 1. Controller Update (ItemController.cs)
+
+In your Create GET action, after LoadCategories();, load Active Items:
+
+public IActionResult Create()
+{
+    LoadCategories();
+
+    // LOAD ACTIVE ITEMS
+    var activeItems = _context.Items
+        .FromSqlRaw("SELECT * FROM tbl_items WHERE Status = 'Active'")
+        .ToList();
+
+    ViewBag.ActiveItems = activeItems;
+
+    return View();
+}
+
+This will pass the active items to your Create view.
+
+
+---
+
+✅ 2. Add Active Items Table in Create.cshtml
+
+Place this BELOW your form, exactly as you requested:
+
+<h3 class="mt-4">Active Items</h3>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Control No</th>
+            <th>Item Name</th>
+            <th>Category</th>
+            <th>Quantity</th>
+            <th>Status</th>
+            <th>Warranty Expiration</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.ActiveItems)
+        {
+            <tr>
+                <td>@item.ControlNo</td>
+                <td>@item.ItemName</td>
+                <td>@item.CategoryID</td>
+                <td>@item.Quantity</td>
+                <td>@item.Status</td>
+                <td>@item.WarrantyExpiration</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+✔ Table appears right below the Create form
+✔ Shows only items where Status = 'Active'
+✔ Automatically updates each time the Create page reloads
+
+
+---
+
+📌 3. OPTIONAL (Better Display for Category Name)
+
+If you want the Category Name instead of CategoryID, change SQL:
+
+SELECT i.*, c.CategoryName 
+FROM tbl_items i
+LEFT JOIN tbl_Category c ON i.CategoryID = c.CategoryID
+WHERE i.Status = 'Active'
+
+Then update your controller:
+
+var activeItems = _context.Items
+    .FromSqlRaw(@"SELECT i.*, c.CategoryName 
+                  FROM tbl_items i
+                  LEFT JOIN tbl_Category c ON i.CategoryID = c.CategoryID
+                  WHERE i.Status = 'Active'")
+    .ToList();
+
+ViewBag.ActiveItems = activeItems;
+
+Then update table:
+
+<td>@item.CategoryName</td>
+
+
+---
+
+🎉 Done!
+
+Your Create page will now show:
+
+Create item form
+
+⬇ Active items table below the form
+
+
+If you want, I can also:
+
+✅ Add DataTables styling
+✅ Add search & pagination
+✅ Add filtering by category
+✅ Add "View Warranty Soon to Expire" section
+
+Just tell me!
+
+**
+
 Got it! 🟦
 You want to add a table below the Create Item form inside Create.cshtml, using your existing ItemController and Create page.
 
