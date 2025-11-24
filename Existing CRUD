@@ -1,3 +1,166 @@
+Got it! I will add a table below the form that displays the existing items, so you can immediately see what is already in tbl_items after creating a new one.
+
+This table will appear under your Create form, using Bootstrap styling.
+
+
+---
+
+✅ Updated Create.cshtml with Table Below
+
+@model WebApplication2.Models.Item
+@{
+    var categories = (IEnumerable<WebApplication2.Models.Category>)ViewBag.Categories;
+    var items = (IEnumerable<WebApplication2.Models.Item>)ViewBag.Items;   // Add this
+}
+
+<h2>Create Item</h2>
+
+<form asp-action="Create">
+    <div>
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryID" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "CategoryID", "CategoryName"))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+
+    <div class="form-group mt-2">
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" id="Quantity" />
+    </div>
+
+    <div>
+        <label>Location</label>
+        <input asp-for="Status" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+</form>
+
+<hr />
+
+<h3>Existing Items</h3>
+
+<table class="table table-bordered table-striped mt-3">
+    <thead>
+        <tr>
+            <th>Item Name</th>
+            <th>Category</th>
+            <th>Quantity</th>
+            <th>Status / Location</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (items != null && items.Any())
+        {
+            foreach (var item in items)
+            {
+                var cat = categories.FirstOrDefault(c => c.CategoryID == item.CategoryID);
+
+                <tr>
+                    <td>@item.ItemName</td>
+                    <td>@cat?.CategoryName</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.Status</td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="4" class="text-center">No items found.</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        var categories = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(categories));
+
+        $('#CategoryID').on('change', function () {
+            var selectedId = $(this).val();
+            var selectedCategory = categories.find(c => c.CategoryID == selectedId);
+
+            if (selectedCategory) {
+                if (selectedCategory.Uom.toLowerCase() === "pc") {
+                    $('#Quantity').val(selectedCategory.Quantity);
+                    $('#Quantity').prop('readonly', true);
+                } else {
+                    $('#Quantity').val('');
+                    $('#Quantity').prop('readonly', false);
+                }
+            } else {
+                $('#Quantity').val('');
+                $('#Quantity').prop('readonly', false);
+            }
+        });
+    </script>
+}
+
+
+---
+
+✅ Controller Update (Important)
+
+Inside your ItemController → Create GET, add:
+
+public async Task<IActionResult> Create()
+{
+    ViewBag.Categories = await _context.Categories.ToListAsync();
+    ViewBag.Items = await _context.Items.ToListAsync(); // Add this line
+    return View();
+}
+
+After saving (POST), redirect back to Create:
+
+[HttpPost]
+public async Task<IActionResult> Create(Item item)
+{
+    if (ModelState.IsValid)
+    {
+        _context.Items.Add(item);
+        await _context.SaveChangesAsync();
+        return RedirectToAction("Create");
+    }
+
+    ViewBag.Categories = await _context.Categories.ToListAsync();
+    ViewBag.Items = await _context.Items.ToListAsync();
+    return View(item);
+}
+
+
+---
+
+🎉 Result
+
+After you save an item:
+
+✔ The form stays clean
+✔ The table below updates instantly
+✔ You can see all existing items (name, category, quantity, status/location)
+
+
+---
+
+If you want, I can also:
+
+✅ Add edit/delete buttons
+✅ Add DataTables search + pagination
+✅ Add category filter dropdown
+Just tell me!
+
+
+**
+
+
 In my existing Create.cshtml code:
 
 @model WebApplication2.Models.Item
