@@ -1,3 +1,135 @@
+That error means:
+
+EF Core refuses to compose LINQ on top of a stored procedure call, because stored procedures are non-composable SQL.
+This happens when you do something like:
+
+_context.Items
+    .FromSqlInterpolated($"EXEC sp_GetItemById @Id={id}")
+    .FirstOrDefaultAsync();   // ❌ causes composition
+
+FirstOrDefaultAsync(), Where(), etc. = LINQ composition, so EF throws this exception.
+
+
+---
+
+✅ THE FIX
+
+You must call AsEnumerable() before doing any LINQ operation.
+
+Replace this (WRONG):
+
+var item = await _context.Items
+    .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+    .AsNoTracking()
+    .FirstOrDefaultAsync();
+
+With this (CORRECT):
+
+var item = _context.Items
+    .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+    .AsNoTracking()
+    .AsEnumerable()      // <--- IMPORTANT
+    .FirstOrDefault();
+
+
+---
+
+✅ UPDATED FIXED VERSION OF ALL SP CALLS
+
+Get Item by ID (Details, Edit GET, Delete GET)
+
+var item = _context.Items
+    .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+    .AsNoTracking()
+    .AsEnumerable()
+    .FirstOrDefault();
+
+
+---
+
+Get All Items (Index)
+
+This one is fine because no extra LINQ is applied:
+
+var items = await _context.Items
+    .FromSqlRaw("EXEC dbo.sp_GetAllItems")
+    .AsNoTracking()
+    .ToListAsync();
+
+
+---
+
+🛠 WHY THIS WORKS
+
+FromSqlRaw / FromSqlInterpolated must be the final part of the SQL.
+
+Calling First(), FirstOrDefault(), Where(), etc. modifies the SQL, so EF blocks it.
+
+AsEnumerable() forces the SQL to execute first, then LINQ happens in-memory, which EF allows.
+
+
+
+---
+
+🚀 DROP-IN PATCH FOR YOUR CONTROLLER
+
+Apply this to all 3 methods:
+
+Details(int id)
+
+var item = _context.Items
+    .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+    .AsNoTracking()
+    .AsEnumerable()
+    .FirstOrDefault();
+
+if (item == null) return NotFound();
+
+return View(item);
+
+Edit(int id) GET
+
+var item = _context.Items
+    .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+    .AsNoTracking()
+    .AsEnumerable()
+    .FirstOrDefault();
+
+if (item == null) return NotFound();
+
+return View(item);
+
+Delete(int id) GET
+
+var item = _context.Items
+    .FromSqlInterpolated($"EXEC dbo.sp_GetItemById @Id = {id}")
+    .AsNoTracking()
+    .AsEnumerable()
+    .FirstOrDefault();
+
+if (item == null) return NotFound();
+
+return View(item);
+
+
+---
+
+🎉 After applying these patches:
+
+✔ Details works
+✔ Edit (GET) works
+✔ Delete (GET) works
+✔ No more InvalidOperationException
+✔ No SQL composing over a stored procedure
+
+
+---
+
+Want me to regenerate the entire controller with all fixes applied?
+
+
+**
+
 Error when Saving, Click Details, Edit and Delete.
 
 InvalidOperationException: 'FromSql' or 'SqlQuery' was called with non-composable SQL and with a query composing over it. Consider calling 'AsEnumerable' after the method to perform the composition on the client side.
