@@ -1,3 +1,104 @@
+Got it! 🟦
+You want to add a table below the Create Item form inside Create.cshtml, using your existing ItemController and Create page.
+
+I will give you a ready-to-paste full working table that appears below the form, showing:
+
+Category
+
+UoM
+
+Default Quantity
+
+Validity Months
+
+
+Or you can choose what fields you want, but here is the most useful version.
+
+
+---
+
+✅ UPDATED Create.cshtml (Add Table Below Fields)
+
+👉 Paste this below the form (before @section Scripts)
+
+<hr />
+
+<h4>Category Details</h4>
+
+<table class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>Category ID</th>
+            <th>Category Name</th>
+            <th>UoM</th>
+            <th>Default Qty</th>
+            <th>Validity (Months)</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var c in categories)
+        {
+            <tr>
+                <td>@c.CategoryID</td>
+                <td>@c.CategoryName</td>
+                <td>@c.Uom</td>
+                <td>@c.Quantity</td>
+                <td>@c.ValidityMonths</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+---
+
+📌 What This Table Shows
+
+This uses the same categories you already loaded with:
+
+var categories = (IEnumerable<WebApplication2.Models.Category>)ViewBag.Categories;
+
+So it displays all category information below the Create fields, giving the user:
+
+✔ category list
+✔ default quantity per category
+✔ unit of measure
+✔ validity months
+
+This also helps confirm what category the user is choosing.
+
+
+---
+
+📍 FINAL Create.cshtml Structure (Simplified)
+
+Your layout now becomes:
+
+Create Item form  
+↓  
+Category auto-fill script  
+↓  
+Category table listing
+
+
+---
+
+💬 If you want…
+
+I can also:
+
+✅ Add live filter (search) on the table
+✅ Add highlighting of the selected category
+✅ Make the table collapsible
+✅ Add pagination using DataTables
+✅ Add price, warranty, other fields to the table
+
+Just tell me and I will build it.
+
+
+**
+
+
 Existing Create.cshtml:
 @model WebApplication2.Models.Item
 @{
