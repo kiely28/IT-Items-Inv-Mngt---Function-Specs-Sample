@@ -1,0 +1,72 @@
+In my existing Create.cshtml code:
+
+@model WebApplication2.Models.Item
+@{
+    var categories = (IEnumerable<WebApplication2.Models.Category>)ViewBag.Categories;
+}
+
+<h2>Create Item</h2>
+
+<form asp-action="Create">
+    <div>
+        <label>Item Name</label>
+        <input asp-for="ItemName" class="form-control" />
+    </div>
+    @* <div>
+        <label>Category</label>
+        <input asp-for="Category" class="form-control" />
+    </div> *@
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryID" class="form-control"
+                asp-items="@(new SelectList(ViewBag.Categories, "CategoryID", "CategoryName"))">
+            <option value="">-- Select Category --</option>
+        </select>
+    </div>
+    @* <div>
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" />
+    </div> *@
+    <div class="form-group mt-2">
+        <label>Quantity</label>
+        <input asp-for="Quantity" class="form-control" id="Quantity" />
+    </div>
+
+    <div>
+        <label>Location</label>
+        <input asp-for="Status" class="form-control" />
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Save</button>
+</form>
+
+
+<!-- Add this JavaScript section -->
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Prepare category data (JSON from Razor)
+        var categories = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(categories));
+
+        $('#CategoryID').on('change', function () {
+            var selectedId = $(this).val();
+            var selectedCategory = categories.find(c => c.CategoryID == selectedId);
+
+            if (selectedCategory) {
+                if (selectedCategory.Uom.toLowerCase() === "pc") {
+                    // Automatically fill Quantity field with category's default quantity
+                    $('#Quantity').val(selectedCategory.Quantity);
+                    $('#Quantity').prop('readonly', true);
+                } else {
+                    // Enable manual entry for non-"Pc" UoM
+                    $('#Quantity').val('');
+                    $('#Quantity').prop('readonly', false);
+                }
+            } else {
+                $('#Quantity').val('');
+                $('#Quantity').prop('readonly', false);
+            }
+        });
+    </script>
+}
+
+please add a table below fields
