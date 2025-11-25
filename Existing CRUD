@@ -1,3 +1,164 @@
+Sure! Below is the complete and clean beginner-friendly implementation for adding SerialNo to tbl_items and updating your Create Item page so it checks whether the SerialNo already exists before saving.
+
+
+---
+
+✅ STEP 1 — Add SerialNo Column in SQL Server
+
+Run this SQL:
+
+ALTER TABLE tbl_items
+ADD SerialNo NVARCHAR(150) NOT NULL DEFAULT('');
+
+If you want it to be unique:
+
+ALTER TABLE tbl_items
+ADD CONSTRAINT UQ_tbl_items_SerialNo UNIQUE (SerialNo);
+
+
+---
+
+✅ STEP 2 — Update Item Model (Item.cs)
+
+Add this property:
+
+public string SerialNo { get; set; } = string.Empty;
+
+Full example:
+
+public class Item
+{
+    public int ItemID { get; set; }
+    public string ControlNo { get; set; } = string.Empty;
+    public string ItemName { get; set; } = string.Empty;
+    public int CategoryID { get; set; }
+    public int Quantity { get; set; }
+    public DateTime? WarrantyExpiration { get; set; }
+    public string Status { get; set; } = "Active";
+    public string SerialNo { get; set; } = string.Empty;
+    public string? Location { get; set; }
+}
+
+
+---
+
+✅ STEP 3 — Update Create.cshtml (Add SerialNo Field)
+
+Inside your form:
+
+<div class="form-group">
+    <label>Serial No</label>
+    <input class="form-control" name="SerialNo" id="SerialNo" required />
+    <span id="serialCheckMsg" class="text-danger"></span>
+</div>
+
+
+---
+
+✅ STEP 4 — Add AJAX SerialNo Checker (Recommended)
+
+Add this below your form:
+
+<script>
+    document.getElementById("SerialNo").addEventListener("keyup", function () {
+        let serial = this.value;
+
+        if (serial.length < 1) {
+            document.getElementById("serialCheckMsg").innerText = "";
+            return;
+        }
+
+        fetch(`/Item/CheckSerial?serialNo=${serial}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    document.getElementById("serialCheckMsg").innerText = "Serial No already exists!";
+                } else {
+                    document.getElementById("serialCheckMsg").innerText = "";
+                }
+            });
+    });
+</script>
+
+
+---
+
+✅ STEP 5 — Add CheckSerial() in ItemController
+
+Add this action to your ItemController.cs:
+
+[HttpGet]
+public async Task<IActionResult> CheckSerial(string serialNo)
+{
+    var exists = await _context.Items
+        .FromSqlRaw("SELECT * FROM tbl_items WHERE SerialNo = {0}", serialNo)
+        .AnyAsync();
+
+    return Json(new { exists });
+}
+
+
+---
+
+✅ STEP 6 — Modify Create POST to Prevent Duplicate SerialNo
+
+Inside your POST Create action:
+
+[HttpPost]
+public async Task<IActionResult> Create(Item item)
+{
+    // Check serial number before saving
+    var exists = await _context.Items
+        .FromSqlRaw("SELECT * FROM tbl_items WHERE SerialNo = {0}", item.SerialNo)
+        .AnyAsync();
+
+    if (exists)
+    {
+        ModelState.AddModelError("SerialNo", "Serial number already exists.");
+        LoadCategories();   // keep categories loaded
+        return View(item);
+    }
+
+    // your existing stored procedure insert
+    var result = await _context.Database.ExecuteSqlRawAsync(
+        "EXEC sp_AddItem @ItemName, @CategoryID, @Quantity, @WarrantyExpiration, @Status, @SerialNo",
+        new SqlParameter("@ItemName", item.ItemName),
+        new SqlParameter("@CategoryID", item.CategoryID),
+        new SqlParameter("@Quantity", item.Quantity),
+        new SqlParameter("@WarrantyExpiration", item.WarrantyExpiration ?? (object)DBNull.Value),
+        new SqlParameter("@Status", item.Status),
+        new SqlParameter("@SerialNo", item.SerialNo)
+    );
+
+    return RedirectToAction("Create");
+}
+
+
+---
+
+🎉 RESULT
+
+✔ SerialNo added to database
+
+✔ SerialNo field added in Create form
+
+✔ Real-time checking using AJAX
+
+✔ Backend protection (cannot bypass)
+
+✔ Prevents duplicate SerialNo 100%
+
+
+---
+
+❓ Want me to add SerialNo filter/search in the table below Create page?
+
+Just tell me and I’ll add it!
+
+
+**
+
+
 Sure! Here is how to add Edit and Delete buttons to your Active Items table in Create.cshtml.
 
 I will assume your controller already has:
