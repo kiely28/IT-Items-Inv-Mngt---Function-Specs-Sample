@@ -1,3 +1,17 @@
+Here are clear one-sentence samples for each:
+
+Before:
+Before automation, Procurement manually entered the OHG Coefficient into SAP each quarter, increasing the risk of delays and input errors.
+
+After:
+After automation, WinActor performs the OHG Coefficient entry in SAP automatically, ensuring faster and more accurate data input.
+
+Effectiveness:
+The automation significantly improves process accuracy, reduces manual workload, and ensures timely quarterly updates.
+
+
+**
+
 Below is the corrected + complete implementation to support SerialNo using your existing ItemController.cs structure, your stored-procedure pattern, and the table name tbl_item (NOT tbl_items).
 
 I carefully checked your controller and found three important adjustments needed:
