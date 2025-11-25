@@ -1,3 +1,217 @@
+Please check my existing ItemController.cs for implementation of Adding SerialNo:
+
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using WebApplication2.Data;
+using WebApplication2.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace WebApplication2.Controllers
+{
+    public class ItemController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public ItemController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // READ - List all items
+        public async Task<IActionResult> Index()
+        {
+            var items = await _context.Items
+                .FromSqlRaw("EXEC sp_GetAllItems")
+                .ToListAsync();
+            return View(items);
+        }
+
+        // CREATE - GET
+        public IActionResult Create()
+        {
+            LoadCategories();
+
+            var activeItems = _context.Items
+                .FromSqlRaw(@"SELECT i.*, c.CategoryName 
+                              FROM tbl_item i
+                              LEFT JOIN tbl_Category c ON i.CategoryID = c.CategoryID
+                              WHERE i.Status = 'Active'")
+                .ToList();
+
+            ViewBag.ActiveItems = activeItems;
+
+            return View();
+        }
+
+        // CREATE - POST
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(Item model)
+        {
+            if (ModelState.IsValid)
+            {
+                // 1. Get Category (to get validity months & prefix)
+                var category = _context.Categories
+                    .FirstOrDefault(c => c.CategoryID == model.CategoryID);
+
+                if (category == null)
+                {
+                    ModelState.AddModelError("", "Invalid Category.");
+                    LoadCategories();
+                    return View(model);
+                }
+
+                // 2. Generate ControlNo
+                model.ControlNo = GenerateControlNo(category.CategoryCode);
+
+                // 3. Set Added Date (today)
+                model.AddedDate = DateTime.Now;
+
+                // 4. Compute Warranty Expiration Date
+                model.WarrantyExpiration = model.AddedDate.AddMonths(category.ValidityMonths);
+
+                // 5. Save via Stored Procedure
+                var pName = new SqlParameter("@ItemName", model.ItemName);
+                var pCat = new SqlParameter("@CategoryID", model.CategoryID);
+                var pQty = new SqlParameter("@Quantity", model.Quantity);
+                var pLocation = new SqlParameter("@Location", model.Location);
+                var pCtrl = new SqlParameter("@ControlNo", model.ControlNo);
+                var pDate = new SqlParameter("@AddedDate", model.AddedDate);
+                var pExp = new SqlParameter("@WarrantyExpiration", model.WarrantyExpiration);
+
+                _context.Database.ExecuteSqlRaw(@"
+            EXEC sp_InsertItem 
+                @ItemName,
+                @CategoryID,
+                @Quantity,
+                @Location,
+                @ControlNo,
+                @AddedDate,
+                @WarrantyExpiration",
+                    pName, pCat, pQty, pLocation, pCtrl, pDate, pExp
+                );
+
+                return RedirectToAction(nameof(Index));
+            }
+
+            LoadCategories();
+            return View(model);
+        }
+
+
+        // EDIT - GET
+        public async Task<IActionResult> Edit(int id)
+        {
+            var item = _context.Items
+                  .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+                  .AsEnumerable()
+                  .FirstOrDefault();
+
+            if (item == null)
+                return NotFound();
+
+            LoadCategories();
+            return View(item);
+        }
+
+        // EDIT - POST
+        [HttpPost]
+        public async Task<IActionResult> Edit(Item item)
+        {
+            if (ModelState.IsValid)
+            {
+                await _context.Database.ExecuteSqlRawAsync(
+                    "EXEC sp_UpdateItem @ItemID, @ItemName, @CategoryID, @Quantity, @Location",
+                    new SqlParameter("@ItemID", item.ItemID),
+                    new SqlParameter("@ItemName", item.ItemName),
+                    new SqlParameter("@CategoryID", item.CategoryID),
+                    new SqlParameter("@Quantity", item.Quantity),
+                    new SqlParameter("@Location", item.Location)
+                );
+                return RedirectToAction(nameof(Index));
+            }
+            return View(item);
+        }
+
+        // DELETE - GET
+        public async Task<IActionResult> Delete(int id)
+        {
+            var item = _context.Items
+                .FromSqlRaw("EXEC sp_GetItemById @ItemID", new SqlParameter("@ItemID", id))
+                .AsEnumerable()
+                .FirstOrDefault();
+
+            if (item == null)
+                return NotFound();
+
+            return View(item);
+        }
+
+        // DELETE - POST
+        [HttpPost, ActionName("Delete")]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            await _context.Database.ExecuteSqlRawAsync(
+                "EXEC sp_DeleteItem @ItemID",
+                new SqlParameter("@ItemID", id)
+            );
+            return RedirectToAction(nameof(Index));
+        }
+        private void LoadCategories()
+        {
+            ViewBag.Categories = _context.Categories
+                .FromSqlRaw("SELECT * FROM tbl_Category")
+                .AsEnumerable()
+                .ToList();
+        }
+
+
+        private string GenerateControlNo(string categoryCode)
+        {
+            string mmyy = DateTime.Now.ToString("MMyy");
+
+            // call stored procedure to get current max seq
+            var sqlCategoryCode = new SqlParameter("@CategoryCode", categoryCode);
+            var sqlMMYY = new SqlParameter("@MMYY", mmyy);
+
+            int maxSeq = _context.Database
+                .SqlQueryRaw<int>("EXEC sp_GetMaxControlNoSeq @CategoryCode, @MMYY",
+                    sqlCategoryCode, sqlMMYY)
+                .AsEnumerable()
+                .FirstOrDefault();
+
+            int newSeq = maxSeq + 1;
+            string seqFormatted = newSeq.ToString("000");
+
+            return $"{categoryCode}-{mmyy}-{seqFormatted}";
+        }
+
+
+
+
+        [HttpGet]
+        public async Task<IActionResult> CheckSerial(string serialNo)
+        {
+            var exists = await _context.Items
+                .FromSqlRaw("SELECT * FROM tbl_items WHERE SerialNo = {0}", serialNo)
+                .AnyAsync();
+
+            return Json(new { exists });
+        }
+
+
+
+
+    }
+
+
+}
+
+
+
+**
+
+
 Sure! Below is the complete and clean beginner-friendly implementation for adding SerialNo to tbl_items and updating your Create Item page so it checks whether the SerialNo already exists before saving.
 
 
