@@ -1,0 +1,124 @@
+Perfect — if you want only the structure (tables, stored procedures, views, functions) and no data, here is the cleanest way to clone the database as db_attendanceenvi.
+
+
+---
+
+✅ Method: Generate Scripts (Schema Only)
+
+This is the safest and most commonly used approach.
+
+Steps in SSMS
+
+1. Right-click the source database
+
+db_meetingattendance
+➡️ Tasks
+➡️ Generate Scripts…
+
+
+---
+
+2. When asked “Choose Objects”
+
+Select:
+✔ Script entire database and all database objects
+
+
+---
+
+3. Click Next → Set Scripting Options
+
+Choose:
+✔ Save as File (or open in new query window)
+
+Then click Advanced (bottom-right).
+
+
+---
+
+4. In Advanced Options
+
+Set:
+
+Option	Value
+
+Types of data to script	Schema only
+Script for Server Version	Your SQL version
+Script Triggers	True
+Script Indexes	True
+Script Primary Keys	True
+Script Foreign Keys	True
+
+
+
+---
+
+5. Generate Script
+
+Click Next → Finish
+You will get a full database creation script.
+
+
+---
+
+6. Modify the top of the script
+
+Find the line:
+
+CREATE DATABASE [db_meetingattendance]
+
+Change to:
+
+CREATE DATABASE [db_attendanceenvi]
+
+Also change any:
+
+USE [db_meetingattendance]
+
+to:
+
+USE [db_attendanceenvi]
+
+
+---
+
+7. Run the script
+
+Run it in a new query window.
+It will create:
+
+The new database db_attendanceenvi
+
+All tables
+
+All stored procedures
+
+Views
+
+Functions
+
+Constraints
+
+Indexes
+
+No data copied
+
+
+
+---
+
+🎉 Result
+
+You now have:
+
+Original: db_meetingattendance
+
+Clone (structure only): db_attendanceenvi
+
+
+Everything except the data.
+
+
+---
+
+If you want, I can also generate a sample template script showing how the tables and stored procedures will look.
