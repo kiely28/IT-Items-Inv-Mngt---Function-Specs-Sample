@@ -1,0 +1,301 @@
+Below is a very simple, beginner-friendly tutorial to create an ASP.NET Core MVC (.NET 8.0) application using Entity Framework Core.
+I’ll keep it step-by-step, minimal, and copy-paste ready 👍
+(This is similar to what you’ll use later for systems like your Meeting Attendance project.)
+
+
+---
+
+1️⃣ Create the Project
+
+Using Visual Studio
+
+1. Open Visual Studio 2022
+
+
+2. Create a new project
+
+
+3. Choose ASP.NET Core Web App (Model-View-Controller)
+
+
+4. Click Next
+
+
+5. Set:
+
+Project name: MvcEfCoreSample
+
+Framework: .NET 8.0
+
+Authentication: None
+
+
+
+6. Click Create
+
+
+
+
+---
+
+2️⃣ Install Required NuGet Packages
+
+Open NuGet Package Manager and install:
+
+Microsoft.EntityFrameworkCore.SqlServer
+Microsoft.EntityFrameworkCore.Tools
+
+
+---
+
+3️⃣ Create the Model (Entity)
+
+📁 Models → Student.cs
+
+using System.ComponentModel.DataAnnotations;
+
+namespace MvcEfCoreSample.Models
+{
+    public class Student
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public string Name { get; set; }
+
+        public int Age { get; set; }
+    }
+}
+
+
+---
+
+4️⃣ Create the DbContext
+
+📁 Data → AppDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using MvcEfCoreSample.Models;
+
+namespace MvcEfCoreSample.Data
+{
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<Student> Students { get; set; }
+    }
+}
+
+
+---
+
+5️⃣ Configure Database Connection
+
+📄 appsettings.json
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=.;Database=MvcEfCoreDb;Trusted_Connection=True;TrustServerCertificate=True"
+  }
+}
+
+
+---
+
+6️⃣ Register DbContext in Program.cs
+
+📄 Program.cs
+
+using Microsoft.EntityFrameworkCore;
+using MvcEfCoreSample.Data;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllersWithViews();
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    ));
+
+var app = builder.Build();
+
+app.UseStaticFiles();
+app.UseRouting();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.Run();
+
+
+---
+
+7️⃣ Create Controller
+
+📁 Controllers → StudentsController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using MvcEfCoreSample.Data;
+using MvcEfCoreSample.Models;
+
+namespace MvcEfCoreSample.Controllers
+{
+    public class StudentsController : Controller
+    {
+        private readonly AppDbContext _context;
+
+        public StudentsController(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Students
+        public IActionResult Index()
+        {
+            var students = _context.Students.ToList();
+            return View(students);
+        }
+
+        // GET: Students/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: Students/Create
+        [HttpPost]
+        public IActionResult Create(Student student)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.Students.Add(student);
+                _context.SaveChanges();
+                return RedirectToAction(nameof(Index));
+            }
+            return View(student);
+        }
+    }
+}
+
+
+---
+
+8️⃣ Create Views
+
+📁 Views → Students → Index.cshtml
+
+@model List<MvcEfCoreSample.Models.Student>
+
+<h2>Student List</h2>
+
+<a asp-action="Create">Add New</a>
+
+<table border="1">
+    <tr>
+        <th>Name</th>
+        <th>Age</th>
+    </tr>
+
+@foreach (var item in Model)
+{
+    <tr>
+        <td>@item.Name</td>
+        <td>@item.Age</td>
+    </tr>
+}
+</table>
+
+
+---
+
+📁 Views → Students → Create.cshtml
+
+@model MvcEfCoreSample.Models.Student
+
+<h2>Add Student</h2>
+
+<form asp-action="Create" method="post">
+    <div>
+        <label>Name</label>
+        <input asp-for="Name" />
+    </div>
+
+    <div>
+        <label>Age</label>
+        <input asp-for="Age" />
+    </div>
+
+    <button type="submit">Save</button>
+</form>
+
+
+---
+
+9️⃣ Create Database (Migration)
+
+Open Package Manager Console:
+
+Add-Migration InitialCreate
+Update-Database
+
+✔ This creates:
+
+Database: MvcEfCoreDb
+
+Table: Students
+
+
+
+---
+
+🔟 Run the App
+
+1. Run the project
+
+
+2. Go to:
+
+
+
+https://localhost:xxxx/Students
+
+3. Add students → data saved to SQL Server 🎉
+
+
+
+
+---
+
+🧠 What You Just Learned
+
+✔ MVC structure
+✔ EF Core DbContext
+✔ SQL Server connection
+✔ CRUD (Create + Read)
+✔ .NET 8 minimal hosting model
+
+
+---
+
+Next Steps (Recommended)
+
+Since you’re building real systems like Meeting Attendance & User Management, next we can add:
+
+✅ Edit / Delete
+
+✅ Bootstrap UI
+
+✅ Repository (DAL) pattern
+
+✅ Authentication (Login / Roles)
+
+✅ Stored Procedures with EF Core
+
+
+👉 Just tell me what you want to add next, and I’ll extend this tutorial step-by-step.
