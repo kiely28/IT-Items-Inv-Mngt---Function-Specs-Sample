@@ -1,3 +1,181 @@
+Perfect 👍 Let’s convert everything to a proper async version using stored procedures + EF Core (.NET 8 MVC).
+
+Below is the clean, recommended async pattern you can directly reuse in enterprise apps.
+
+
+---
+
+1️⃣ Stored Procedures (Same as Before)
+
+-- Get all students
+CREATE PROCEDURE sp_Students_GetAll
+AS
+BEGIN
+    SELECT Id, Name, Age
+    FROM Students
+END
+GO
+
+-- Insert student
+CREATE PROCEDURE sp_Students_Insert
+    @Name NVARCHAR(100),
+    @Age INT
+AS
+BEGIN
+    INSERT INTO Students (Name, Age)
+    VALUES (@Name, @Age)
+END
+GO
+
+
+---
+
+2️⃣ AppDbContext (ASYNC)
+
+📁 Data → AppDbContext.cs
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Data.SqlClient;
+using MvcEfCoreSample.Models;
+
+namespace MvcEfCoreSample.Data
+{
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<Student> Students { get; set; }
+
+        // GET ALL (Async)
+        public async Task<List<Student>> GetStudentsAsync()
+        {
+            return await Students
+                .FromSqlRaw("EXEC sp_Students_GetAll")
+                .AsNoTracking()
+                .ToListAsync();
+        }
+
+        // INSERT (Async)
+        public async Task InsertStudentAsync(Student student)
+        {
+            await Database.ExecuteSqlRawAsync(
+                "EXEC sp_Students_Insert @Name, @Age",
+                new SqlParameter("@Name", student.Name),
+                new SqlParameter("@Age", student.Age)
+            );
+        }
+    }
+}
+
+
+---
+
+3️⃣ StudentsController (ASYNC)
+
+📁 Controllers → StudentsController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using MvcEfCoreSample.Data;
+using MvcEfCoreSample.Models;
+
+namespace MvcEfCoreSample.Controllers
+{
+    public class StudentsController : Controller
+    {
+        private readonly AppDbContext _context;
+
+        public StudentsController(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Students
+        public async Task<IActionResult> Index()
+        {
+            var students = await _context.GetStudentsAsync();
+            return View(students);
+        }
+
+        // GET: Students/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: Students/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Student student)
+        {
+            if (!ModelState.IsValid)
+                return View(student);
+
+            await _context.InsertStudentAsync(student);
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
+
+
+---
+
+4️⃣ Views (No Change)
+
+Your Razor views remain exactly the same.
+Async logic is controller + data layer only ✔
+
+
+---
+
+5️⃣ Why Async is the Best Practice
+
+✔ Non-blocking database calls
+✔ Better performance under load
+✔ Required for cloud & enterprise apps
+✔ Matches modern ASP.NET Core patterns
+
+
+---
+
+6️⃣ Common Async Mistakes to Avoid ❌
+
+❌ Mixing async with .Result or .Wait()
+❌ Forgetting await
+❌ Not returning Task<IActionResult>
+
+
+---
+
+7️⃣ Recommended Next Step (Very Important)
+
+For real systems, you should separate logic using:
+
+Controllers
+ └── Interfaces
+ └── Repositories (DAL)
+ └── Stored Procedures
+
+I can next help you with:
+
+✅ Async Update & Delete SP
+
+✅ Repository pattern (IStudentRepository)
+
+✅ Stored procedure with output parameter (return new ID)
+
+✅ Pagination + filtering
+
+✅ Transaction handling
+
+
+👉 Just tell me what you want next.
+
+
+**
+
 Sure 👍
 Below is a simple and clean example of converting your StudentsController to use SQL Server stored procedures in ASP.NET Core MVC (.NET 8) with EF Core.
 
