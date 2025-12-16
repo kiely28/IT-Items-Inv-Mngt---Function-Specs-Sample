@@ -1,3 +1,211 @@
+Sure 👍
+Below is a simple and clean example of converting your StudentsController to use SQL Server stored procedures in ASP.NET Core MVC (.NET 8) with EF Core.
+
+I’ll keep it copy-paste ready and aligned with how you’ll later use stored procedures in your Meeting Attendance system.
+
+
+---
+
+1️⃣ Create Stored Procedures in SQL Server
+
+Run these in SQL Server Management Studio:
+
+-- Get all students
+CREATE PROCEDURE sp_Students_GetAll
+AS
+BEGIN
+    SELECT Id, Name, Age
+    FROM Students
+END
+GO
+
+-- Insert student
+CREATE PROCEDURE sp_Students_Insert
+    @Name NVARCHAR(100),
+    @Age INT
+AS
+BEGIN
+    INSERT INTO Students (Name, Age)
+    VALUES (@Name, @Age)
+END
+GO
+
+
+---
+
+2️⃣ Update DbContext (IMPORTANT)
+
+📁 Data → AppDbContext.cs
+
+Add this method (keep your DbSet):
+
+using Microsoft.EntityFrameworkCore;
+using MvcEfCoreSample.Models;
+
+namespace MvcEfCoreSample.Data
+{
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options)
+        {
+        }
+
+        public DbSet<Student> Students { get; set; }
+
+        // Stored Procedure: Get All Students
+        public List<Student> GetStudents()
+        {
+            return Students
+                .FromSqlRaw("EXEC sp_Students_GetAll")
+                .AsNoTracking()
+                .ToList();
+        }
+
+        // Stored Procedure: Insert Student
+        public void InsertStudent(Student student)
+        {
+            Database.ExecuteSqlRaw(
+                "EXEC sp_Students_Insert @Name, @Age",
+                new SqlParameter("@Name", student.Name),
+                new SqlParameter("@Age", student.Age)
+            );
+        }
+    }
+}
+
+👉 Don’t forget to add:
+
+using Microsoft.Data.SqlClient;
+
+
+---
+
+3️⃣ Update StudentsController to Use Stored Procedures
+
+📁 Controllers → StudentsController.cs
+
+using Microsoft.AspNetCore.Mvc;
+using MvcEfCoreSample.Data;
+using MvcEfCoreSample.Models;
+
+namespace MvcEfCoreSample.Controllers
+{
+    public class StudentsController : Controller
+    {
+        private readonly AppDbContext _context;
+
+        public StudentsController(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Students
+        public IActionResult Index()
+        {
+            var students = _context.GetStudents(); // SP call
+            return View(students);
+        }
+
+        // GET: Students/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: Students/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Create(Student student)
+        {
+            if (ModelState.IsValid)
+            {
+                _context.InsertStudent(student); // SP call
+                return RedirectToAction(nameof(Index));
+            }
+
+            return View(student);
+        }
+    }
+}
+
+
+---
+
+4️⃣ Views (No Changes Needed)
+
+Your existing views still work:
+
+✔ Index.cshtml
+✔ Create.cshtml
+
+EF Core maps the stored procedure result directly to the Student model.
+
+
+---
+
+5️⃣ Key Notes (Important for Real Projects)
+
+✔ Why this approach is good
+
+Uses EF Core tracking + mapping
+
+Safe from SQL injection
+
+Easy to migrate to DAL / Repository pattern
+
+Perfect for enterprise systems
+
+
+⚠ Common Rules
+
+Column names returned by SP must match model properties
+
+Stored procedures do not auto-track changes
+
+Use .AsNoTracking() for read-only queries
+
+
+
+---
+
+6️⃣ Optional: Async Version (Recommended)
+
+If you want best practice:
+
+public async Task<List<Student>> GetStudentsAsync()
+{
+    return await Students
+        .FromSqlRaw("EXEC sp_Students_GetAll")
+        .AsNoTracking()
+        .ToListAsync();
+}
+
+
+---
+
+🚀 Next Enhancements (Tell me what you want)
+
+I can help you add:
+
+✅ Update / Delete stored procedures
+
+✅ Repository + Interface (DAL pattern)
+
+✅ Output parameters (like auto-generated IDs)
+
+✅ Stored procedure with filtering
+
+✅ Bootstrap + validation
+
+✅ Authentication + role-based access
+
+
+Just say “next, add update & delete SP” or “convert to DAL” 👍
+
+
+**
+
 Below is a very simple, beginner-friendly tutorial to create an ASP.NET Core MVC (.NET 8.0) application using Entity Framework Core.
 I’ll keep it step-by-step, minimal, and copy-paste ready 👍
 (This is similar to what you’ll use later for systems like your Meeting Attendance project.)
