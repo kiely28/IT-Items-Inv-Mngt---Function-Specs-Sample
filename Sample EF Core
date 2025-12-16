@@ -1,3 +1,256 @@
+Great 👍
+Let’s extend your current setup and add ASYNC UPDATE & DELETE using Stored Procedures the proper, production-ready way.
+
+I’ll give you:
+
+1. SQL Stored Procedures
+
+
+2. AppDbContext async methods
+
+
+3. Controller async actions
+
+
+4. Notes & best practices
+
+
+
+All copy-paste ready.
+
+
+---
+
+1️⃣ SQL Server – Stored Procedures
+
+✅ UPDATE Student
+
+CREATE PROCEDURE sp_Students_Update
+    @Id INT,
+    @Name NVARCHAR(100),
+    @Age INT
+AS
+BEGIN
+    UPDATE Students
+    SET Name = @Name,
+        Age = @Age
+    WHERE Id = @Id
+END
+GO
+
+
+---
+
+✅ DELETE Student
+
+CREATE PROCEDURE sp_Students_Delete
+    @Id INT
+AS
+BEGIN
+    DELETE FROM Students
+    WHERE Id = @Id
+END
+GO
+
+
+---
+
+2️⃣ AppDbContext – Async Methods
+
+📁 Data → AppDbContext.cs
+
+Add these methods below your existing ones:
+
+// UPDATE (Async)
+public async Task UpdateStudentAsync(Student student)
+{
+    await Database.ExecuteSqlRawAsync(
+        "EXEC sp_Students_Update @Id, @Name, @Age",
+        new SqlParameter("@Id", student.Id),
+        new SqlParameter("@Name", student.Name),
+        new SqlParameter("@Age", student.Age)
+    );
+}
+
+// DELETE (Async)
+public async Task DeleteStudentAsync(int id)
+{
+    await Database.ExecuteSqlRawAsync(
+        "EXEC sp_Students_Delete @Id",
+        new SqlParameter("@Id", id)
+    );
+}
+
+✔ Uses parameterized queries
+✔ Safe from SQL injection
+✔ Async-ready
+
+
+---
+
+3️⃣ StudentsController – Async Actions
+
+📁 Controllers → StudentsController.cs
+
+🔹 GET: Edit
+
+public async Task<IActionResult> Edit(int id)
+{
+    var student = (await _context.GetStudentsAsync())
+                    .FirstOrDefault(x => x.Id == id);
+
+    if (student == null)
+        return NotFound();
+
+    return View(student);
+}
+
+
+---
+
+🔹 POST: Edit
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(Student student)
+{
+    if (!ModelState.IsValid)
+        return View(student);
+
+    await _context.UpdateStudentAsync(student);
+    return RedirectToAction(nameof(Index));
+}
+
+
+---
+
+🔹 GET: Delete (Confirm Page)
+
+public async Task<IActionResult> Delete(int id)
+{
+    var student = (await _context.GetStudentsAsync())
+                    .FirstOrDefault(x => x.Id == id);
+
+    if (student == null)
+        return NotFound();
+
+    return View(student);
+}
+
+
+---
+
+🔹 POST: Delete
+
+[HttpPost, ActionName("Delete")]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> DeleteConfirmed(int id)
+{
+    await _context.DeleteStudentAsync(id);
+    return RedirectToAction(nameof(Index));
+}
+
+
+---
+
+4️⃣ Views Needed (Minimal)
+
+📁 Views/Students/Edit.cshtml
+
+@model MvcEfCoreSample.Models.Student
+
+<h2>Edit Student</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+
+    <div>
+        <label>Name</label>
+        <input asp-for="Name" />
+    </div>
+
+    <div>
+        <label>Age</label>
+        <input asp-for="Age" />
+    </div>
+
+    <button type="submit">Update</button>
+</form>
+
+
+---
+
+📁 Views/Students/Delete.cshtml
+
+@model MvcEfCoreSample.Models.Student
+
+<h2>Delete Student</h2>
+
+<p>Are you sure you want to delete <b>@Model.Name</b>?</p>
+
+<form asp-action="Delete" method="post">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit">Delete</button>
+</form>
+
+
+---
+
+5️⃣ Update Index.cshtml (Add Links)
+
+<td>
+    <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
+    <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
+</td>
+
+
+---
+
+6️⃣ What You Have Now ✅
+
+✔ Full CRUD using Stored Procedures
+✔ Async / Await everywhere
+✔ Clean controller
+✔ Centralized database logic
+✔ Enterprise-ready structure
+
+
+---
+
+7️⃣ Important Best Practices (Read This)
+
+✔ Use .AsNoTracking() for read SPs
+✔ Do NOT fetch all rows just to find one in large tables
+✔ For production, add:
+
+SET NOCOUNT ON;
+
+inside SPs
+
+
+---
+
+🚀 Next Logical Upgrades (Highly Recommended)
+
+I can now help you with:
+
+✅ sp_Students_GetById (avoid loading all records)
+
+✅ Repository + Interface (IStudentRepository)
+
+✅ Transaction handling
+
+✅ Output parameter (return inserted ID)
+
+✅ Convert this pattern to your Meeting Attendance system
+
+
+👉 Just tell me what you want next.
+
+
+**
+
+
 Perfect 👍 Let’s convert everything to a proper async version using stored procedures + EF Core (.NET 8 MVC).
 
 Below is the clean, recommended async pattern you can directly reuse in enterprise apps.
