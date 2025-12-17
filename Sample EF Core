@@ -1,3 +1,171 @@
+This is a very common EF Core issue 👍 and the error message is actually telling you the exact fix.
+
+Let’s explain why it happens and then I’ll give you two correct solutions.
+👉 Choose Solution A (recommended) or Solution B (quick fix).
+
+
+---
+
+🔴 Why This Error Happens
+
+You defined:
+
+public DbSet<Category> Categories { get; set; }
+
+EF Core assumes Category is a table entity, and every entity MUST have a primary key.
+
+But your Category model:
+
+public class Category
+{
+    public string CategoryName { get; set; }
+}
+
+❌ No primary key
+❌ EF Core doesn’t know how to track it
+
+
+---
+
+✅ SOLUTION A (RECOMMENDED – Clean & Correct)
+
+✔ Add a Primary Key (Best Practice)
+
+Since your table tbl_category already has Id, use it.
+
+
+---
+
+1️⃣ Update Category Model
+
+namespace WebApplication1.Models
+{
+    public class Category
+    {
+        public int Id { get; set; }          // PRIMARY KEY
+        public string CategoryName { get; set; }
+    }
+}
+
+
+---
+
+2️⃣ Update Stored Procedure
+
+ALTER PROCEDURE sp_Category_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT Id, CategoryName
+    FROM tbl_category
+    ORDER BY CategoryName
+END
+GO
+
+
+---
+
+3️⃣ Update View Dropdown (Use CategoryName as Value)
+
+<select asp-for="Category">
+    <option value="">-- Select Category --</option>
+    @foreach (var item in categories)
+    {
+        <option value="@item.CategoryName">
+            @item.CategoryName
+        </option>
+    }
+</select>
+
+✔ EF Core is happy
+✔ Clean entity tracking
+✔ Reusable later for Category CRUD
+
+
+---
+
+✅ SOLUTION B (QUICK FIX – Keyless Entity)
+
+Use this ONLY if you don’t want CRUD on Category.
+
+
+---
+
+1️⃣ Mark Entity as Keyless
+
+📁 ApplicationDbContext.cs
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Category>().HasNoKey();
+}
+
+
+---
+
+2️⃣ Keep Model Simple
+
+public class Category
+{
+    public string CategoryName { get; set; }
+}
+
+
+---
+
+⚠ Limitations of Keyless Entities
+
+❌ Cannot Insert / Update / Delete
+❌ Read-only
+❌ Not tracked
+
+
+---
+
+🏆 Which Should You Use?
+
+Scenario	Recommendation
+
+Real system	✅ Solution A
+Dropdown reference	⚠ Solution B
+Future CRUD	✅ Solution A
+Quick read-only	⚠ Solution B
+
+
+👉 I strongly recommend Solution A
+You’ll need it later anyway.
+
+
+---
+
+🔑 Pro Tip (Important)
+
+EF Core + Stored Procedures still require keys for mapping,
+even if you never update the table.
+
+
+---
+
+🚀 Next Step Options
+
+I can help you:
+
+✅ Convert Category dropdown to ViewModel
+
+✅ Add Category CRUD
+
+✅ Add cascading dropdowns
+
+✅ Apply this fix to Meeting Locations / Departments
+
+
+Just tell me what you want next 👍
+
+
+**
+
+
 InvalidOperationException: The entity type 'Category' requires a primary key to be defined. If you intended to use a keyless entity type, call 'HasNoKey' in 'OnModelCreating'. For more information on keyless entity types, see https://go.microsoft.com/fwlink/?linkid=2141943.
 
 **
