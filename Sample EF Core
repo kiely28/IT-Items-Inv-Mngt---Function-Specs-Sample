@@ -1,3 +1,9 @@
+
+InvalidCastException: Unable to cast object of type 'System.Int32' to type 'System.String'.
+
+**
+
+
 This is a very common EF Core issue 👍 and the error message is actually telling you the exact fix.
 
 Let’s explain why it happens and then I’ll give you two correct solutions.
