@@ -1,3 +1,157 @@
+Got it 👍
+You want fiscal-year logic like this:
+
+If D9 = Jan AND D10 = Mar
+👉 use Year + 1
+
+Otherwise
+👉 use Year from C12 as-is
+
+
+Below is a clean and safe update to your macro that supports month names (Jan, Mar) and still works even if the cells contain numbers.
+
+
+---
+
+✅ Logic Implemented
+
+D9 (From)	D10 (To)	Year Used
+
+Jan	Mar	C12 + 1
+Any other	Any	C12
+
+
+
+---
+
+✅ Updated Macro (Copy–Paste Ready)
+
+Sub CheckMonthYearMatch()
+
+    Dim m1 As String, m2 As String
+    Dim yr As Long, finalYr As Long
+    Dim check1 As String, check2 As String
+    Dim result As String
+    Dim folderPath As String, fileName As String, filePath As String
+    Dim templateWB As Workbook, wb As Workbook
+    Dim templateWS As Worksheet
+    Dim fileFound As Boolean
+    Dim sourceWS As Worksheet
+
+    Set sourceWS = ThisWorkbook.Sheets("Sheet1")
+
+    ' Validate Year
+    If Not IsNumeric(sourceWS.Range("C12").Value) Then
+        MsgBox "Year value is invalid.", vbCritical
+        Exit Sub
+    End If
+
+    yr = CLng(sourceWS.Range("C12").Value)
+
+    ' Read month values as text (Jan, Feb, Mar, etc.)
+    m1 = Trim(sourceWS.Range("D9").Value)
+    m2 = Trim(sourceWS.Range("D10").Value)
+
+    If m1 = "" Or m2 = "" Then
+        MsgBox "Month values cannot be empty.", vbCritical
+        Exit Sub
+    End If
+
+    ' Fiscal year rule
+    If UCase(m1) = "JAN" And UCase(m2) = "MAR" Then
+        finalYr = yr + 1
+    Else
+        finalYr = yr
+    End If
+
+    ' Build comparison strings
+    check1 = finalYr & " " & m1
+    check2 = finalYr & " " & m2
+
+    ' Locate template
+    folderPath = "D:\Coefficient\Template\"
+    fileName = Dir(folderPath & "*.xlsx")
+
+    If fileName = "" Then
+        MsgBox "No template file found in folder.", vbExclamation
+        Exit Sub
+    End If
+
+    filePath = folderPath & fileName
+    fileFound = False
+
+    ' Check if template is already open
+    For Each wb In Workbooks
+        If wb.FullName = filePath Then
+            Set templateWB = wb
+            fileFound = True
+            Exit For
+        End If
+    Next wb
+
+    If Not fileFound Then
+        Set templateWB = Workbooks.Open(filePath, UpdateLinks:=0, ReadOnly:=True)
+    End If
+
+    Set templateWS = templateWB.Sheets(1)
+
+    ' Compare values
+    If UCase(Trim(templateWS.Range("D8").Value)) <> UCase(check1) Then
+        result = "Valid period From does NOT match. Expected: " & check1
+    End If
+
+    If UCase(Trim(templateWS.Range("F8").Value)) <> UCase(check2) Then
+        If result <> "" Then result = result & vbCrLf
+        result = result & "Valid period To does NOT match. Expected: " & check2
+    End If
+
+    If result <> "" Then
+        MsgBox result, vbCritical, "Check Result"
+    End If
+
+    If Not fileFound Then
+        templateWB.Close SaveChanges:=False
+    End If
+
+End Sub
+
+
+---
+
+✅ Example
+
+Sheet1 values:
+
+C12 = 2025
+D9  = Jan
+D10 = Mar
+
+➡ Output comparison:
+
+2026 Jan
+2026 Mar
+
+
+---
+
+💡 Want to Enhance Further?
+
+I can:
+
+Support month numbers (1–12) and names together
+
+Allow other fiscal ranges (e.g., Oct–Mar)
+
+Centralize fiscal logic into a reusable function
+
+Auto-detect fiscal year based on month sequence
+
+
+Just tell me what you want next 🚀
+
+
+**
+
 Sub CheckMonthYearMatch()
 
     Dim m1 As String, m2 As String, yr As Integer
