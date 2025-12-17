@@ -1,3 +1,251 @@
+Great question 👍
+Let’s add a new column Category to your project properly and cleanly, including:
+
+✅ Database
+✅ Stored Procedures
+✅ Model
+✅ DbContext
+✅ Controller
+✅ Views
+
+This follows enterprise-safe steps so you won’t break existing data.
+
+
+---
+
+1️⃣ Update Database (SQL Server)
+
+🔹 Add Column to Table
+
+ALTER TABLE Students
+ADD Category NVARCHAR(50) NULL;
+
+> NULL is safe for existing records.
+
+
+
+
+---
+
+2️⃣ Update Stored Procedures
+
+✅ Get All
+
+ALTER PROCEDURE sp_Students_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT Id, Name, Age, Category
+    FROM Students
+END
+GO
+
+
+---
+
+✅ Insert
+
+ALTER PROCEDURE sp_Students_Insert
+    @Name NVARCHAR(100),
+    @Age INT,
+    @Category NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO Students (Name, Age, Category)
+    VALUES (@Name, @Age, @Category)
+END
+GO
+
+
+---
+
+✅ Update
+
+ALTER PROCEDURE sp_Students_Update
+    @Id INT,
+    @Name NVARCHAR(100),
+    @Age INT,
+    @Category NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE Students
+    SET Name = @Name,
+        Age = @Age,
+        Category = @Category
+    WHERE Id = @Id
+END
+GO
+
+
+---
+
+✅ Delete (No Change)
+
+ALTER PROCEDURE sp_Students_Delete
+    @Id INT
+AS
+BEGIN
+    DELETE FROM Students
+    WHERE Id = @Id
+END
+GO
+
+
+---
+
+3️⃣ Update Model
+
+📁 Models → Student.cs
+
+using System.ComponentModel.DataAnnotations;
+
+namespace MvcEfCoreSample.Models
+{
+    public class Student
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public string Name { get; set; }
+
+        public int Age { get; set; }
+
+        [Required]
+        public string Category { get; set; }
+    }
+}
+
+
+---
+
+4️⃣ Update AppDbContext (Async SP Calls)
+
+📁 Data → AppDbContext.cs
+
+// INSERT
+public async Task InsertStudentAsync(Student student)
+{
+    await Database.ExecuteSqlRawAsync(
+        "EXEC sp_Students_Insert @Name, @Age, @Category",
+        new SqlParameter("@Name", student.Name),
+        new SqlParameter("@Age", student.Age),
+        new SqlParameter("@Category", student.Category)
+    );
+}
+
+// UPDATE
+public async Task UpdateStudentAsync(Student student)
+{
+    await Database.ExecuteSqlRawAsync(
+        "EXEC sp_Students_Update @Id, @Name, @Age, @Category",
+        new SqlParameter("@Id", student.Id),
+        new SqlParameter("@Name", student.Name),
+        new SqlParameter("@Age", student.Age),
+        new SqlParameter("@Category", student.Category)
+    );
+}
+
+> ✅ GetStudentsAsync() already works as long as SP returns Category.
+
+
+
+
+---
+
+5️⃣ Update Controller (No Logic Change)
+
+Your controller already works — it automatically binds the new field.
+
+✔ No changes needed except views.
+
+
+---
+
+6️⃣ Update Views
+
+📁 Views/Students/Create.cshtml
+
+<div>
+    <label>Category</label>
+    <input asp-for="Category" />
+</div>
+
+
+---
+
+📁 Views/Students/Edit.cshtml
+
+<div>
+    <label>Category</label>
+    <input asp-for="Category" />
+</div>
+
+
+---
+
+📁 Views/Students/Index.cshtml
+
+<th>Category</th>
+
+<td>@item.Category</td>
+
+
+---
+
+📁 Views/Students/Delete.cshtml
+
+<p>
+    Category: <b>@Model.Category</b>
+</p>
+
+
+---
+
+7️⃣ Important Rules (VERY IMPORTANT)
+
+✔ Stored procedure column names must match model properties
+✔ SP parameter order must match your EXEC call
+✔ Use ALTER, not DROP & CREATE, for production
+
+
+---
+
+8️⃣ What You Have Now ✅
+
+✔ New column fully integrated
+✔ Async stored procedures
+✔ MVC binding works automatically
+✔ No EF migration needed (SP-based approach)
+
+
+---
+
+🚀 Recommended Next Steps
+
+Since you’re building real systems, next I can help you with:
+
+✅ Dropdown Category (from database)
+
+✅ Validation (required / max length)
+
+✅ sp_Students_GetByCategory
+
+✅ Repository + Interface
+
+✅ Apply this same pattern to Meeting Attendance
+
+
+👉 Just tell me what you want next.
+
+
+
+**
+
 Great 👍
 Let’s extend your current setup and add ASYNC UPDATE & DELETE using Stored Procedures the proper, production-ready way.
 
