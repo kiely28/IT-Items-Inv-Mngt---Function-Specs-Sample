@@ -1,3 +1,231 @@
+You’re getting that error because you have duplicate action methods with the same signature in the same controller.
+
+This is a C# compile-time error, not an ASP.NET issue.
+
+
+---
+
+❌ What’s Wrong (Root Cause)
+
+In your StudentsController, you defined these TWICE:
+
+Duplicate methods
+
+Create() GET
+
+Create(Student student) POST
+
+Edit(int id) GET
+
+Edit(Student student) POST
+
+
+C# does NOT allow two methods with:
+
+Same method name
+
+Same parameters
+
+Same return type
+
+
+Even if the code inside is different ❌
+
+
+---
+
+❌ Example of the Problem
+
+You currently have both of these in the same controller:
+
+// FIRST Create (GET)
+public IActionResult Create()
+{
+    return View();
+}
+
+// SECOND Create (GET)
+public async Task<IActionResult> Create()
+{
+    ViewBag.CategoryList = await _context.GetCategoriesAsync();
+    return View();
+}
+
+➡️ Same name, same parameters → compile error
+
+
+---
+
+✅ Correct Approach
+
+You should keep ONLY ONE version of each action, and merge the logic.
+
+Below is the FIXED and CLEAN controller, with:
+
+Category dropdown
+
+Async
+
+Stored procedures
+
+No duplicate methods
+
+
+
+---
+
+✅ FIXED StudentsController.cs (COPY THIS)
+
+using Microsoft.AspNetCore.Mvc;
+using WebApplication1.Data;
+using WebApplication1.Models;
+
+namespace WebApplication1.Controllers
+{
+    public class StudentsController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public StudentsController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Students
+        public async Task<IActionResult> Index()
+        {
+            var students = await _context.GetStudentsAsync();
+            return View(students);
+        }
+
+        // ================= CREATE =================
+
+        // GET: Students/Create
+        public async Task<IActionResult> Create()
+        {
+            ViewBag.CategoryList = await _context.GetCategoriesAsync();
+            return View();
+        }
+
+        // POST: Students/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Student student)
+        {
+            if (!ModelState.IsValid)
+            {
+                ViewBag.CategoryList = await _context.GetCategoriesAsync();
+                return View(student);
+            }
+
+            await _context.InsertStudentAsync(student);
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ================= EDIT =================
+
+        // GET: Students/Edit/5
+        public async Task<IActionResult> Edit(int id)
+        {
+            var student = (await _context.GetStudentsAsync())
+                            .FirstOrDefault(x => x.Id == id);
+
+            if (student == null)
+                return NotFound();
+
+            ViewBag.CategoryList = await _context.GetCategoriesAsync();
+            return View(student);
+        }
+
+        // POST: Students/Edit
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Student student)
+        {
+            if (!ModelState.IsValid)
+            {
+                ViewBag.CategoryList = await _context.GetCategoriesAsync();
+                return View(student);
+            }
+
+            await _context.UpdateStudentAsync(student);
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ================= DELETE =================
+
+        // GET: Students/Delete/5
+        public async Task<IActionResult> Delete(int id)
+        {
+            var student = (await _context.GetStudentsAsync())
+                            .FirstOrDefault(x => x.Id == id);
+
+            if (student == null)
+                return NotFound();
+
+            return View(student);
+        }
+
+        // POST: Students/Delete/5
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            await _context.DeleteStudentAsync(id);
+            return RedirectToAction(nameof(Index));
+        }
+    }
+}
+
+
+---
+
+✅ Why This Fix Works
+
+✔ Only one Create() GET
+✔ Only one Create(Student) POST
+✔ Only one Edit() GET
+✔ Only one Edit(Student) POST
+✔ Category dropdown loaded where needed
+✔ Async + Stored Procedure pattern preserved
+
+
+---
+
+🔑 Important Rule to Remember
+
+> One controller = one action name per parameter signature
+
+
+
+If you need different behavior:
+
+Use different method names
+
+Or merge logic into one method (recommended)
+
+
+
+---
+
+🚀 Recommended Next Improvements
+
+If you want, I can help you:
+
+✅ Replace ViewBag with a ViewModel (best practice)
+
+✅ Add GetStudentById SP (avoid loading all students)
+
+✅ Add validation messages to dropdown
+
+✅ Apply this same fix to your Meeting Attendance project
+
+
+Just tell me 👍
+
+
+**
+
 Please check code:
 
 using Microsoft.AspNetCore.Mvc;
