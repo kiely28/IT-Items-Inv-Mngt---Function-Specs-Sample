@@ -1,3 +1,253 @@
+Below is a clean, async, production-style example to load Category as a dropdown from another table
+tbl_category (CategoryName) using Stored Procedures + EF Core (.NET 8 MVC).
+
+This pattern is exactly what you’ll reuse for Locations, Roles, Departments, etc.
+
+
+---
+
+1️⃣ Database – Table (Reference)
+
+tbl_category
+------------
+Id (INT, PK)
+CategoryName (NVARCHAR(50))
+
+
+---
+
+2️⃣ Stored Procedure – Get Categories
+
+CREATE PROCEDURE sp_Category_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CategoryName
+    FROM tbl_category
+    ORDER BY CategoryName
+END
+GO
+
+
+---
+
+3️⃣ Model – Category (View Model Friendly)
+
+📁 Models → Category.cs
+
+namespace MvcEfCoreSample.Models
+{
+    public class Category
+    {
+        public string CategoryName { get; set; }
+    }
+}
+
+> ✔ No ID needed if you only bind text
+✔ Simple and lightweight
+
+
+
+
+---
+
+4️⃣ AppDbContext – Async Category Loader
+
+📁 Data → AppDbContext.cs
+
+Add:
+
+public DbSet<Category> Categories { get; set; }
+
+// Get categories for dropdown
+public async Task<List<Category>> GetCategoriesAsync()
+{
+    return await Categories
+        .FromSqlRaw("EXEC sp_Category_GetAll")
+        .AsNoTracking()
+        .ToListAsync();
+}
+
+
+---
+
+5️⃣ StudentsController – Load Dropdown
+
+📁 Controllers → StudentsController.cs
+
+🔹 Create (GET)
+
+public async Task<IActionResult> Create()
+{
+    ViewBag.CategoryList = await _context.GetCategoriesAsync();
+    return View();
+}
+
+
+---
+
+🔹 Create (POST)
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(Student student)
+{
+    if (!ModelState.IsValid)
+    {
+        ViewBag.CategoryList = await _context.GetCategoriesAsync();
+        return View(student);
+    }
+
+    await _context.InsertStudentAsync(student);
+    return RedirectToAction(nameof(Index));
+}
+
+
+---
+
+🔹 Edit (GET)
+
+public async Task<IActionResult> Edit(int id)
+{
+    var student = (await _context.GetStudentsAsync())
+                    .FirstOrDefault(x => x.Id == id);
+
+    if (student == null)
+        return NotFound();
+
+    ViewBag.CategoryList = await _context.GetCategoriesAsync();
+    return View(student);
+}
+
+
+---
+
+🔹 Edit (POST)
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Edit(Student student)
+{
+    if (!ModelState.IsValid)
+    {
+        ViewBag.CategoryList = await _context.GetCategoriesAsync();
+        return View(student);
+    }
+
+    await _context.UpdateStudentAsync(student);
+    return RedirectToAction(nameof(Index));
+}
+
+
+---
+
+6️⃣ View – Dropdown Category
+
+📁 Views/Students/Create.cshtml
+
+@model MvcEfCoreSample.Models.Student
+@{
+    var categories = ViewBag.CategoryList as List<MvcEfCoreSample.Models.Category>;
+}
+
+<div>
+    <label>Category</label>
+    <select asp-for="Category">
+        <option value="">-- Select Category --</option>
+        @foreach (var item in categories)
+        {
+            <option value="@item.CategoryName">
+                @item.CategoryName
+            </option>
+        }
+    </select>
+</div>
+
+
+---
+
+📁 Views/Students/Edit.cshtml
+
+@model MvcEfCoreSample.Models.Student
+@{
+    var categories = ViewBag.CategoryList as List<MvcEfCoreSample.Models.Category>;
+}
+
+<div>
+    <label>Category</label>
+    <select asp-for="Category">
+        <option value="">-- Select Category --</option>
+        @foreach (var item in categories)
+        {
+            <option value="@item.CategoryName"
+                selected="@(item.CategoryName == Model.Category)">
+                @item.CategoryName
+            </option>
+        }
+    </select>
+</div>
+
+
+---
+
+7️⃣ Validation (Optional but Recommended)
+
+📁 Models → Student.cs
+
+[Required(ErrorMessage = "Category is required")]
+public string Category { get; set; }
+
+
+---
+
+8️⃣ Best Practice Upgrade (Recommended)
+
+Instead of ViewBag, use a ViewModel:
+
+public class StudentViewModel
+{
+    public Student Student { get; set; }
+    public List<Category> Categories { get; set; }
+}
+
+(Ask me if you want this refactor — it’s cleaner.)
+
+
+---
+
+✅ What You Have Now
+
+✔ Category dropdown from database
+✔ Stored procedure based
+✔ Async EF Core
+✔ Reusable pattern
+✔ Enterprise-ready
+
+
+---
+
+🚀 Next Useful Enhancements
+
+I can help you add:
+
+✅ “Others” option with textbox
+
+✅ Category CRUD page
+
+✅ Cascading dropdowns
+
+✅ Repository + Interface
+
+✅ Apply this to Meeting Location / Department
+
+
+👉 Just tell me what you want next 👍
+
+
+**
+
+
 Great question 👍
 Let’s add a new column Category to your project properly and cleanly, including:
 
