@@ -1,3 +1,219 @@
+This error is very clear once you know where to look 👍
+It’s caused by a type mismatch between your dropdown value and your model property.
+
+
+---
+
+🔴 The Error
+
+InvalidCastException:
+Unable to cast object of type 'System.Int32' to type 'System.String'
+
+👉 Meaning:
+.NET is receiving an INT value but trying to assign it to a string property.
+
+
+---
+
+🔍 Root Cause (Your Case)
+
+You now have Category.Id (int) in tbl_category, but your Student model still uses string:
+
+// Student.cs
+public string Category { get; set; }   // ❌ string
+
+But your dropdown is likely posting:
+
+<option value="@item.Id">...</option>  // ✅ int
+
+➡️ MVC tries to assign int → string
+➡️ ❌ InvalidCastException
+
+
+---
+
+✅ CORRECT FIX (BEST PRACTICE)
+
+✔ Store the CategoryId (int), not CategoryName
+
+This is the professional & database-correct approach.
+
+
+---
+
+1️⃣ Update Student Model
+
+public class Student
+{
+    public int Id { get; set; }
+
+    public string Name { get; set; }
+
+    public int Age { get; set; }
+
+    // FK to Category
+    public int CategoryId { get; set; }
+}
+
+❌ Remove string Category
+✅ Use int CategoryId
+
+
+---
+
+2️⃣ Update Students Table
+
+ALTER TABLE Students
+ADD CategoryId INT;
+
+(Optional FK)
+
+ALTER TABLE Students
+ADD CONSTRAINT FK_Students_Category
+FOREIGN KEY (CategoryId) REFERENCES tbl_category(Id);
+
+
+---
+
+3️⃣ Update Stored Procedures
+
+INSERT
+
+ALTER PROCEDURE sp_Students_Insert
+    @Name NVARCHAR(100),
+    @Age INT,
+    @CategoryId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO Students (Name, Age, CategoryId)
+    VALUES (@Name, @Age, @CategoryId)
+END
+GO
+
+
+---
+
+UPDATE
+
+ALTER PROCEDURE sp_Students_Update
+    @Id INT,
+    @Name NVARCHAR(100),
+    @Age INT,
+    @CategoryId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE Students
+    SET Name = @Name,
+        Age = @Age,
+        CategoryId = @CategoryId
+    WHERE Id = @Id
+END
+GO
+
+
+---
+
+4️⃣ Update AppDbContext
+
+public async Task InsertStudentAsync(Student student)
+{
+    await Database.ExecuteSqlRawAsync(
+        "EXEC sp_Students_Insert @Name, @Age, @CategoryId",
+        new SqlParameter("@Name", student.Name),
+        new SqlParameter("@Age", student.Age),
+        new SqlParameter("@CategoryId", student.CategoryId)
+    );
+}
+
+public async Task UpdateStudentAsync(Student student)
+{
+    await Database.ExecuteSqlRawAsync(
+        "EXEC sp_Students_Update @Id, @Name, @Age, @CategoryId",
+        new SqlParameter("@Id", student.Id),
+        new SqlParameter("@Name", student.Name),
+        new SqlParameter("@Age", student.Age),
+        new SqlParameter("@CategoryId", student.CategoryId)
+    );
+}
+
+
+---
+
+5️⃣ Fix the Dropdown (IMPORTANT)
+
+✅ Use Id as value, bind to CategoryId
+
+<select asp-for="CategoryId" class="form-control">
+    <option value="">-- Select Category --</option>
+    @foreach (var item in categories)
+    {
+        <option value="@item.Id">@item.CategoryName</option>
+    }
+</select>
+
+✔ int → int
+✔ No casting error
+✔ Correct relational design
+
+
+---
+
+🟢 Alternative (NOT Recommended)
+
+If you insist on storing CategoryName as string:
+
+<option value="@item.CategoryName">@item.CategoryName</option>
+
+But ❌ this breaks normalization
+❌ harder to maintain
+❌ bad for reporting
+
+
+---
+
+🏆 Final Recommendation (What You SHOULD Do)
+
+✔ Use CategoryId (INT)
+✔ Use FK relationship
+✔ Use dropdown value = Id
+✔ Display text = CategoryName
+
+This is enterprise-grade design and exactly what you’ll need later for:
+
+Reports
+
+Joins
+
+Filters
+
+Performance
+
+
+
+---
+
+🚀 Want the Next Step?
+
+I can help you:
+
+✅ Join CategoryName in sp_Students_GetAll
+
+✅ Display CategoryName in Index page
+
+✅ Convert to ViewModel (no ViewBag)
+
+✅ Apply same fix to Location / Department
+
+
+Just tell me 👍
+
+
+
+**
 
 InvalidCastException: Unable to cast object of type 'System.Int32' to type 'System.String'.
 
