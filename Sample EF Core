@@ -1,3 +1,161 @@
+Please check code:
+
+using Microsoft.AspNetCore.Mvc;
+using System;
+using WebApplication1.Data;
+using WebApplication1.Models;
+
+namespace WebApplication1.Controllers
+{
+    public class StudentsController : Controller
+    {
+        private readonly ApplicationDbContext _context;
+
+        public StudentsController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        // GET: Students
+        public async Task<IActionResult> Index()
+        {
+            var students = await _context.GetStudentsAsync();
+            return View(students);
+        }
+
+        // GET: Students/Create
+        public IActionResult Create()
+        {
+            return View();
+        }
+
+        // POST: Students/Create
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Student student)
+        {
+            if (!ModelState.IsValid)
+                return View(student);
+
+            await _context.InsertStudentAsync(student);
+            return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Edit
+        public async Task<IActionResult> Edit(int id)
+        {
+            var student = (await _context.GetStudentsAsync())
+                            .FirstOrDefault(x => x.Id == id);
+
+            if (student == null)
+                return NotFound();
+
+            return View(student);
+        }
+
+        // POST: Edit
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Student student)
+        {
+            if (!ModelState.IsValid)
+                return View(student);
+
+            await _context.UpdateStudentAsync(student);
+            return RedirectToAction(nameof(Index));
+        }
+
+        // GET: Delete(Confirm Page)
+        public async Task<IActionResult> Delete(int id)
+        {
+            var student = (await _context.GetStudentsAsync())
+                            .FirstOrDefault(x => x.Id == id);
+
+            if (student == null)
+                return NotFound();
+
+            return View(student);
+        }
+
+        // POST: Delete
+
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            await _context.DeleteStudentAsync(id);
+            return RedirectToAction(nameof(Index));
+        }
+
+
+
+
+        // Create (GET)
+        public async Task<IActionResult> Create()
+        {
+            ViewBag.CategoryList = await _context.GetCategoriesAsync();
+            return View();
+        }
+
+        // Create (POST)
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Student student)
+        {
+            if (!ModelState.IsValid)
+            {
+                ViewBag.CategoryList = await _context.GetCategoriesAsync();
+                return View(student);
+            }
+
+            await _context.InsertStudentAsync(student);
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Edit (GET)
+        public async Task<IActionResult> Edit(int id)
+        {
+            var student = (await _context.GetStudentsAsync())
+                            .FirstOrDefault(x => x.Id == id);
+
+            if (student == null)
+                return NotFound();
+
+            ViewBag.CategoryList = await _context.GetCategoriesAsync();
+            return View(student);
+        }
+
+        // Edit (POST)
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Student student)
+        {
+            if (!ModelState.IsValid)
+            {
+                ViewBag.CategoryList = await _context.GetCategoriesAsync();
+                return View(student);
+            }
+
+            await _context.UpdateStudentAsync(student);
+            return RedirectToAction(nameof(Index));
+        }
+
+
+    }
+}
+
+
+
+Error:
+1. Type 'StudentsController' already defines a member called 'Create' with the same parameter types
+2. Type 'StudentsController' already defines a member called 'Edit' with the same parameter types
+
+
+**
+
+
 Below is a clean, async, production-style example to load Category as a dropdown from another table
 tbl_category (CategoryName) using Stored Procedures + EF Core (.NET 8 MVC).
 
