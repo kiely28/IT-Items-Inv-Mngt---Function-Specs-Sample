@@ -1,3 +1,7 @@
+InvalidOperationException: The entity type 'Category' requires a primary key to be defined. If you intended to use a keyless entity type, call 'HasNoKey' in 'OnModelCreating'. For more information on keyless entity types, see https://go.microsoft.com/fwlink/?linkid=2141943.
+
+**
+
 You’re getting that error because you have duplicate action methods with the same signature in the same controller.
 
 This is a C# compile-time error, not an ASP.NET issue.
