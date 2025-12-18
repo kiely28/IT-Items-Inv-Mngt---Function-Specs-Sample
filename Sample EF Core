@@ -1,3 +1,154 @@
+Great requirement 👍 — this is a very common business flow (keep data, only reset Serial No).
+
+You want:
+
+✅ Save
+✅ Stay on Create.cshtml
+✅ Keep all entered values
+✅ Clear only SerialNo
+
+Let’s do this cleanly and correctly.
+
+
+---
+
+🎯 KEY IDEA
+
+Instead of redirecting to Index, you:
+
+1. Save the record
+
+
+2. Return Create view again
+
+
+3. Manually clear SerialNo
+
+
+4. Rebind dropdown list
+
+
+
+
+---
+
+✅ STEP 1 — Update Create (POST) action
+
+❌ Current (redirects & clears everything)
+
+return RedirectToAction(nameof(Index));
+
+✅ NEW (stay on Create & clear SerialNo only)
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(Student student)
+{
+    if (await _context.SerialNoExistsAsync(student.SerialNo))
+    {
+        ModelState.AddModelError("SerialNo", "Serial Number already exists.");
+    }
+
+    if (!ModelState.IsValid)
+    {
+        ViewBag.CategoryList = await _context.GetCategoriesAsync();
+        return View(student);
+    }
+
+    // Save
+    await _context.InsertStudentAsync(student);
+
+    // Clear ONLY SerialNo
+    student.SerialNo = string.Empty;
+
+    // Optional: success message
+    ViewBag.SuccessMessage = "Student saved successfully.";
+
+    ViewBag.CategoryList = await _context.GetCategoriesAsync();
+    return View(student);
+}
+
+✔ Same view
+✔ SerialNo cleared
+✔ Other fields preserved
+
+
+---
+
+✅ STEP 2 — Show success message in Create.cshtml
+
+Add this above the form:
+
+@if (ViewBag.SuccessMessage != null)
+{
+    <div style="color:green;">
+        @ViewBag.SuccessMessage
+    </div>
+}
+
+
+---
+
+✅ STEP 3 — No changes needed in Create.cshtml inputs
+
+Your inputs already bind correctly:
+
+<input asp-for="SerialNo" />
+<input asp-for="Name" />
+<input asp-for="Age" />
+<select asp-for="CategoryId">...</select>
+
+Because we set:
+
+student.SerialNo = "";
+
+Only that field is cleared.
+
+
+---
+
+⚠️ IMPORTANT WARNING (WHY THIS WORKS)
+
+Approach	Result
+
+RedirectToAction	Clears ALL fields
+Return View(model)	Keeps model state
+Clear property manually	Clears ONE field
+
+
+
+---
+
+🧠 OPTIONAL (Better UX)
+
+Auto-focus Serial No after save
+
+<script>
+    document.getElementById("SerialNo")?.focus();
+</script>
+
+
+---
+
+🚀 OPTIONAL (BEST PRACTICE)
+
+For production systems:
+
+Use ViewModel
+
+Use TempData for success message
+
+Disable Save button during submit
+
+
+If you want, I can refactor this to: 👉 CreateStudentViewModel 👉 Client-side validation 👉 AJAX save (no reload)
+
+Just tell me 👍
+
+
+**
+
+
 when I click the Save button, the same Create.cshtml view is shown again without clearing the fields, except for the Serial No field?
 
 
