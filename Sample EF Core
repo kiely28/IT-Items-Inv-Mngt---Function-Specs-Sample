@@ -1,3 +1,8 @@
+when I click the Save button, the same Create.cshtml view is shown again without clearing the fields, except for the Serial No field?
+
+
+**
+
 Good catch — this error is very specific and we can fix it cleanly.
 You actually have TWO separate issues here.
 
