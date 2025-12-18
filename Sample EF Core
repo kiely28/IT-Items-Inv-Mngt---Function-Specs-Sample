@@ -1,3 +1,14 @@
+A database operation failed while processing the request.
+SqlException: The parameterized query '(@SerialNo nvarchar(4000))EXEC sp_Students_SerialNoExists @Seria' expects the parameter '@SerialNo', which was not supplied.
+
+There are pending model changes
+Pending model changes are detected in the following:
+
+ApplicationDbContext
+
+
+**
+
 Great question — this is a very real-world requirement 👍
 We’ll do this properly and safely in ASP.NET Core MVC + EF Core + Stored Procedures.
 
