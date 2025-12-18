@@ -1,3 +1,102 @@
+
+
+
+**
+
+
+Edit.cshtml:
+
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+
+@model WebApplication1.Models.Student
+@{
+    var categories = ViewBag.CategoryList as List<WebApplication1.Models.Category>;
+}
+
+<h2>Edit</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+
+    <div>
+        <label>Name</label>
+        <input asp-for="Name" />
+    </div>
+
+    <div>
+        <label>Age</label>
+        <input asp-for="Age" />
+    </div>
+
+    @* <div>
+        <label>Category</label>
+        <input asp-for="Category" />
+    </div> *@
+
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryId">
+            <option value="">-- Select Category --</option>
+            @foreach (var item in categories)
+            {
+                <option value="@item.CategoryId"
+                        selected="@(item.CategoryId == Model.CategoryId)">
+                    @item.CategoryName
+                </option>
+            }
+        </select>
+    </div>
+
+
+    <button type="submit">Update</button>
+</form>
+
+
+sp_Students_Update:
+
+ALTER PROCEDURE [dbo].[sp_Students_Update]
+    @Id INT,
+    @Name NVARCHAR(100),
+    @Age INT,
+    @CategoryId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE Students
+    SET Name = @Name,
+        Age = @Age,
+        CategoryId = @CategoryId
+    WHERE Id = @Id
+END
+
+
+Students.cs:
+
+using System.ComponentModel.DataAnnotations;
+
+namespace WebApplication1.Models
+{
+    public class Student
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public string Name { get; set; }
+
+        public int Age { get; set; }
+
+        public int CategoryId { get; set; } // FK to Category
+
+        public string CategoryName { get; set; }  // Display only (from JOIN)
+    }
+}
+
+
 This is a very good question — and based on everything you’ve shown so far, the issue is not EF Core, not async, and not the stored procedure JOIN.
 
 👉 The problem is almost certainly one missing value during EDIT.
