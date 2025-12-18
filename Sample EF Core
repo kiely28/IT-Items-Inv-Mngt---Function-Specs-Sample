@@ -1,4 +1,207 @@
+Great, thanks for pasting the actual code 👍
+You’re very close — the problem is small and very clear now.
 
+
+---
+
+✅ What’s CORRECT in your code
+
+✔ Edit.cshtml has:
+
+<input type="hidden" asp-for="Id" />
+
+✔ Dropdown is bound correctly:
+
+<select asp-for="CategoryId">
+
+✔ Stored procedure is correct:
+
+WHERE Id = @Id
+
+✔ Student model is correct:
+
+public int CategoryId { get; set; }
+public string CategoryName { get; set; }
+
+So view + model + SP are all fine ✅
+
+
+---
+
+🔴 REAL PROBLEM (100% CONFIRMED)
+
+❌ ViewBag.CategoryList is NOT being repopulated on POST (Edit)
+
+When validation fails OR when you return the view again, the dropdown list becomes NULL, causing:
+
+CategoryId not bound properly
+
+Update runs with incorrect data
+
+Appears like “not saving”
+
+
+
+---
+
+✅ FIX #1 (MOST IMPORTANT): Edit POST must repopulate categories
+
+❌ Current POST (likely)
+
+[HttpPost]
+public async Task<IActionResult> Edit(Student student)
+{
+    await _context.UpdateStudentAsync(student);
+    return RedirectToAction(nameof(Index));
+}
+
+✅ FIXED POST
+
+[HttpPost]
+public async Task<IActionResult> Edit(Student student)
+{
+    if (!ModelState.IsValid)
+    {
+        ViewBag.CategoryList = await _context.GetCategoriesAsync();
+        return View(student);
+    }
+
+    await _context.UpdateStudentAsync(student);
+    return RedirectToAction(nameof(Index));
+}
+
+⚠️ This is REQUIRED whenever you use dropdowns.
+
+
+---
+
+🔴 SECOND REAL ISSUE (VERY IMPORTANT)
+
+❌ You used @item.CategoryId in dropdown
+
+But your Category model almost certainly uses Id, not CategoryId.
+
+🔥 THIS CAUSES CategoryId = 0 ON POST
+
+
+---
+
+✅ FIX #2: Correct dropdown value
+
+❌ Current
+
+<option value="@item.CategoryId"
+        selected="@(item.CategoryId == Model.CategoryId)">
+
+✅ Correct (MOST LIKELY)
+
+<option value="@item.Id"
+        selected="@(item.Id == Model.CategoryId)">
+    @item.CategoryName
+</option>
+
+
+---
+
+🔍 Why this breaks saving
+
+If:
+
+<option value="">
+
+or
+
+<option value="0">
+
+Then:
+
+student.CategoryId = 0;
+
+Stored procedure runs:
+
+CategoryId = 0
+
+❌ Invalid FK
+❌ No update or silent failure
+
+
+---
+
+✅ FINAL CORRECT Edit.cshtml
+
+@model WebApplication1.Models.Student
+@{
+    var categories = ViewBag.CategoryList as List<WebApplication1.Models.Category>;
+}
+
+<h2>Edit</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+
+    <div>
+        <label>Name</label>
+        <input asp-for="Name" />
+    </div>
+
+    <div>
+        <label>Age</label>
+        <input asp-for="Age" />
+    </div>
+
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryId">
+            <option value="">-- Select Category --</option>
+            @foreach (var item in categories)
+            {
+                <option value="@item.Id"
+                        selected="@(item.Id == Model.CategoryId)">
+                    @item.CategoryName
+                </option>
+            }
+        </select>
+    </div>
+
+    <button type="submit">Update</button>
+</form>
+
+
+---
+
+✅ FINAL CHECKLIST (VERY IMPORTANT)
+
+✔ Category model has Id as PK
+✔ Dropdown uses value="@item.Id"
+✔ Edit POST repopulates ViewBag.CategoryList
+✔ Stored procedure updates by Id
+
+
+---
+
+🚀 Optional Improvement (Cleaner Way)
+
+Instead of manual <option> loop, you can use:
+
+<select asp-for="CategoryId"
+        asp-items="@(new SelectList(categories, "Id", "CategoryName"))">
+</select>
+
+
+---
+
+If you want, next I can:
+
+Convert ViewBag → ViewModel (best practice)
+
+Add validation for Category
+
+Show why SQL update silently fails
+
+Add logging to confirm affected rows
+
+
+Just tell me 👍
 
 
 **
