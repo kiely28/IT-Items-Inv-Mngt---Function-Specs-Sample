@@ -1,3 +1,17 @@
+
+InvalidCastException: Unable to cast object of type 'System.Int32' to type 'System.String'.
+
+WebApplication1.Data.ApplicationDbContext.GetCategoriesAsync() in ApplicationDbContext.cs
++
+            return await Categories
+WebApplication1.Controllers.StudentsController.Create() in StudentsController.cs
++
+            ViewBag.CategoryList = await _context.GetCategoriesAsync();
+
+**
+
+
+
 This error is very clear once you know where to look 👍
 It’s caused by a type mismatch between your dropdown value and your model property.
 
