@@ -1,3 +1,186 @@
+Perfect — here is a clean, complete, copy-paste ready solution that does exactly what you want ✅
+
+
+---
+
+🎯 REQUIREMENTS (CONFIRMED)
+
+✔ Save button
+
+Saves data
+
+Stays on Create.cshtml
+
+Clears ONLY Serial No
+
+Focuses cursor back to Serial No
+
+
+✔ Clear button
+
+Clears ALL fields
+
+Does NOT submit
+
+Works instantly
+
+
+
+---
+
+1️⃣ StudentsController.cs — Create (POST)
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(Student student)
+{
+    if (await _context.SerialNoExistsAsync(student.SerialNo))
+    {
+        ModelState.AddModelError("SerialNo", "Serial Number already exists.");
+    }
+
+    if (!ModelState.IsValid)
+    {
+        ViewBag.CategoryList = await _context.GetCategoriesAsync();
+        return View(student);
+    }
+
+    // Save record
+    await _context.InsertStudentAsync(student);
+
+    // 🔴 IMPORTANT: Clear ModelState
+    ModelState.Clear();
+
+    // Clear ONLY Serial No
+    student.SerialNo = string.Empty;
+
+    // Success message
+    ViewBag.SuccessMessage = "Saved successfully.";
+
+    ViewBag.CategoryList = await _context.GetCategoriesAsync();
+    return View(student);
+}
+
+
+---
+
+2️⃣ Create.cshtml — FULL VIEW CODE
+
+@model WebApplication1.Models.Student
+@{
+    var categories = ViewBag.CategoryList as List<WebApplication1.Models.Category>;
+}
+
+<h2>Create Student</h2>
+
+@if (ViewBag.SuccessMessage != null)
+{
+    <div style="color:green; margin-bottom:10px;">
+        @ViewBag.SuccessMessage
+    </div>
+}
+
+<form asp-action="Create" method="post" id="studentForm">
+
+    <div asp-validation-summary="All" style="color:red;"></div>
+
+    <div>
+        <label>Serial No</label>
+        <input asp-for="SerialNo" id="SerialNo" />
+        <span asp-validation-for="SerialNo" style="color:red;"></span>
+    </div>
+
+    <div>
+        <label>Name</label>
+        <input asp-for="Name" />
+        <span asp-validation-for="Name" style="color:red;"></span>
+    </div>
+
+    <div>
+        <label>Age</label>
+        <input asp-for="Age" />
+    </div>
+
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryId">
+            <option value="">-- Select Category --</option>
+            @foreach (var item in categories)
+            {
+                <option value="@item.Id">@item.CategoryName</option>
+            }
+        </select>
+        <span asp-validation-for="CategoryId" style="color:red;"></span>
+    </div>
+
+    <br />
+
+    <button type="submit">Save</button>
+    <button type="reset" id="btnClear">Clear</button>
+
+</form>
+
+<script>
+    // After SAVE: focus Serial No
+    window.onload = function () {
+        var success = '@ViewBag.SuccessMessage';
+        if (success) {
+            document.getElementById("SerialNo").focus();
+        }
+    };
+
+    // After CLEAR: clear all fields + focus Serial No
+    document.getElementById("btnClear").addEventListener("click", function () {
+        setTimeout(function () {
+            document.getElementById("SerialNo").focus();
+        }, 0);
+    });
+</script>
+
+
+---
+
+🧠 WHY THIS WORKS (IMPORTANT)
+
+Feature	How it works
+
+Clear Serial No after Save	ModelState.Clear()
+Keep other values	Return View(student)
+Clear all on Clear	type="reset"
+Focus Serial No	JavaScript
+
+
+
+---
+
+✅ FINAL RESULT
+
+✔ Save → Serial No cleared → cursor focused
+✔ Clear → all fields reset → cursor focused
+✔ No page reload on Clear
+✔ No ModelState conflicts
+
+
+---
+
+🏆 BEST PRACTICE (OPTIONAL NEXT STEP)
+
+For production-level apps:
+
+Replace ViewBag with ViewModel
+
+Use TempData for success messages
+
+Add client-side duplicate SerialNo check
+
+
+If you want any of those, just say the word 👍
+
+
+
+**
+
+
 Good — that detail narrows it down perfectly 👍
 Your server-side clearing is correct now, so this is purely an HTML issue.
 
