@@ -1,3 +1,167 @@
+Good catch — this error is very specific and we can fix it cleanly.
+You actually have TWO separate issues here.
+
+
+---
+
+🔴 ERROR 1 (MAIN):
+
+@SerialNo parameter was not supplied
+
+❌ What’s happening
+
+Your code is executing something like:
+
+EXEC sp_Students_SerialNoExists @SerialNo
+
+…but no value is actually being passed to @SerialNo.
+
+This usually happens when:
+
+ExecuteSqlRawAsync is used incorrectly, or
+
+Parameter name mismatch, or
+
+EF Core is trying to run a parameterized query without parameters
+
+
+
+---
+
+✅ CORRECT WAY (SAFE & WORKING)
+
+Since your SP returns a SELECT COUNT(*), DO NOT use ExecuteSqlRawAsync.
+
+✔ FIX: Use ExecuteScalarAsync (BEST)
+
+ApplicationDbContext.cs
+
+using Microsoft.Data.SqlClient;
+using System.Data;
+
+public async Task<bool> SerialNoExistsAsync(string serialNo)
+{
+    using var connection = Database.GetDbConnection();
+    using var command = connection.CreateCommand();
+
+    command.CommandText = "sp_Students_SerialNoExists";
+    command.CommandType = CommandType.StoredProcedure;
+
+    command.Parameters.Add(
+        new SqlParameter("@SerialNo", SqlDbType.NVarChar, 50)
+        {
+            Value = serialNo
+        });
+
+    if (connection.State != ConnectionState.Open)
+        await connection.OpenAsync();
+
+    var result = (int)await command.ExecuteScalarAsync();
+
+    return result > 0;
+}
+
+✔ Parameter supplied
+✔ No EF confusion
+✔ Async-safe
+
+
+---
+
+❌ WHAT NOT TO DO (CAUSES YOUR ERROR)
+
+await Database.ExecuteSqlRawAsync(
+    "EXEC sp_Students_SerialNoExists @SerialNo",
+    serialNo); // ❌ NOT bound to parameter name
+
+or
+
+"EXEC sp_Students_SerialNoExists @SerialNo = @SerialNo" // ❌ invalid binding
+
+
+---
+
+🔴 ERROR 2 (SECOND):
+
+“There are pending model changes”
+
+❓ Why this appears
+
+You added SerialNo to the model, but did not apply migrations.
+
+EF Core is warning you that:
+
+> Model ≠ Database schema
+
+
+
+
+---
+
+✅ FIX #2 — Update Database Schema
+
+Run in Package Manager Console
+
+Add-Migration AddSerialNoToStudent
+Update-Database
+
+OR if you’re not using migrations (SP-only projects):
+
+✔ Ignore this warning
+✔ Or remove DbSet<Student> mapping if unused
+
+
+---
+
+✅ RECOMMENDED DATABASE SAFETY (IMPORTANT)
+
+Add unique constraint:
+
+CREATE UNIQUE INDEX UX_Students_SerialNo
+ON Students (SerialNo);
+
+This guarantees no duplicates even under concurrency.
+
+
+---
+
+🧪 QUICK TEST CHECKLIST
+
+✔ SerialNo textbox filled
+✔ Parameter name matches exactly: @SerialNo
+✔ SP exists and compiled
+✔ Migration applied or DB manually updated
+
+
+---
+
+🎯 FINAL RESULT
+
+✔ No more parameter error
+✔ SerialNo validation works
+✔ Create page blocks duplicates
+✔ Database consistency guaranteed
+
+
+---
+
+If you want next:
+
+Validate SerialNo on Edit (exclude same record)
+
+AJAX live duplicate check
+
+Return SP output parameter instead
+
+Clean EF Core warnings completely
+
+
+Just tell me 👍
+
+
+**
+
+
 A database operation failed while processing the request.
 SqlException: The parameterized query '(@SerialNo nvarchar(4000))EXEC sp_Students_SerialNoExists @Seria' expects the parameter '@SerialNo', which was not supplied.
 
