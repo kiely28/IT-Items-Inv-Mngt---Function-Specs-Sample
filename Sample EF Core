@@ -97,6 +97,8 @@ namespace WebApplication1.Models
 }
 
 
+**
+
 This is a very good question — and based on everything you’ve shown so far, the issue is not EF Core, not async, and not the stored procedure JOIN.
 
 👉 The problem is almost certainly one missing value during EDIT.
