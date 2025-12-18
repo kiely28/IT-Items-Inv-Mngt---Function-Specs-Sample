@@ -1,3 +1,133 @@
+Good — that detail narrows it down perfectly 👍
+Your server-side clearing is correct now, so this is purely an HTML issue.
+
+
+---
+
+🔴 EXACT REASON WHY “Clear” DOES NOTHING
+
+Your Clear button is inside the <form>, but it is acting like a submit button.
+
+In HTML:
+
+<button>Clear</button>
+
+👉 Default type = submit ❌
+So clicking Clear:
+
+Submits the form
+
+Page reloads
+
+ModelState repopulates fields
+
+Looks like “nothing cleared”
+
+
+
+---
+
+✅ FIX (ONE LINE — DO THIS)
+
+Change your Clear button to:
+
+<button type="reset">Clear</button>
+
+OR
+
+<button type="button" onclick="clearForm()">Clear</button>
+
+
+---
+
+✅ BEST & SIMPLEST (RECOMMENDED)
+
+<button type="reset">Clear</button>
+
+✔ Clears inputs instantly
+✔ No server call
+✔ No ModelState involved
+
+
+---
+
+✅ IF YOU WANT FULL CONTROL (OPTIONAL)
+
+<button type="button" onclick="clearForm()">Clear</button>
+
+<script>
+    function clearForm() {
+        document.querySelector("form").reset();
+    }
+</script>
+
+
+---
+
+🔎 VERIFY IT WORKS
+
+Make sure:
+
+<input asp-for="SerialNo" id="SerialNo" />
+
+Reset works by targeting input IDs.
+
+
+---
+
+🧠 IMPORTANT NOTE ABOUT DROPDOWNS
+
+Reset will:
+
+Clear textboxes
+
+Reset dropdown to first option
+
+
+<option value="">-- Select Category --</option>
+
+That’s correct behavior.
+
+
+---
+
+✅ FINAL ANSWER (COPY THIS)
+
+<button type="submit">Save</button>
+<button type="reset">Clear</button>
+
+
+---
+
+🚀 OPTIONAL UX IMPROVEMENT
+
+Auto-focus SerialNo after reset:
+
+<script>
+    document.querySelector('button[type="reset"]').addEventListener('click', () => {
+        document.getElementById("SerialNo").focus();
+    });
+</script>
+
+
+---
+
+If you want next:
+
+Clear only SerialNo on reset
+
+Confirmation dialog on Clear
+
+Disable Clear when form is empty
+
+
+Just tell me 👍
+
+
+
+**
+
+
 This is a classic ASP.NET Core MVC behavior — nothing is “wrong”, but ModelState is overriding your values.
 
 Once you understand this, everything will work exactly as you want 👍
