@@ -1,3 +1,214 @@
+Great question — this is a very real-world requirement 👍
+We’ll do this properly and safely in ASP.NET Core MVC + EF Core + Stored Procedures.
+
+I’ll break it into clear steps.
+
+
+---
+
+1️⃣ Add SerialNo column to Students table
+
+SQL
+
+ALTER TABLE Students
+ADD SerialNo NVARCHAR(50) NOT NULL;
+
+👉 If table already has data, use:
+
+ALTER TABLE Students
+ADD SerialNo NVARCHAR(50) NULL;
+
+UPDATE Students
+SET SerialNo = 'TEMP-' + CAST(Id AS NVARCHAR);
+
+ALTER TABLE Students
+ALTER COLUMN SerialNo NVARCHAR(50) NOT NULL;
+
+
+---
+
+2️⃣ Update Student model
+
+using System.ComponentModel.DataAnnotations;
+
+namespace WebApplication1.Models
+{
+    public class Student
+    {
+        public int Id { get; set; }
+
+        [Required]
+        public string SerialNo { get; set; } = string.Empty;
+
+        [Required]
+        public string Name { get; set; }
+
+        public int Age { get; set; }
+
+        [Required(ErrorMessage = "Category is required")]
+        public int CategoryId { get; set; }
+
+        public string? CategoryName { get; set; }
+    }
+}
+
+
+---
+
+3️⃣ Create stored procedure to check duplicate SerialNo
+
+SQL
+
+CREATE PROCEDURE sp_Students_SerialNoExists
+    @SerialNo NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT COUNT(1)
+    FROM Students
+    WHERE SerialNo = @SerialNo;
+END
+
+
+---
+
+4️⃣ Add async method in ApplicationDbContext
+
+public async Task<bool> SerialNoExistsAsync(string serialNo)
+{
+    var count = await Database.ExecuteSqlRawAsync(
+        "EXEC sp_Students_SerialNoExists @SerialNo",
+        new SqlParameter("@SerialNo", serialNo)
+    );
+
+    return count > 0;
+}
+
+⚠️ IMPORTANT
+ExecuteSqlRawAsync returns affected rows, not SELECT result.
+
+✅ Correct way (use scalar)
+
+public async Task<bool> SerialNoExistsAsync(string serialNo)
+{
+    using var command = Database.GetDbConnection().CreateCommand();
+    command.CommandText = "sp_Students_SerialNoExists";
+    command.CommandType = CommandType.StoredProcedure;
+    command.Parameters.Add(new SqlParameter("@SerialNo", serialNo));
+
+    await Database.OpenConnectionAsync();
+    var result = (int)await command.ExecuteScalarAsync();
+    await Database.CloseConnectionAsync();
+
+    return result > 0;
+}
+
+
+---
+
+5️⃣ Update Create (POST) in StudentsController
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(Student student)
+{
+    if (await _context.SerialNoExistsAsync(student.SerialNo))
+    {
+        ModelState.AddModelError("SerialNo", "Serial Number already exists.");
+    }
+
+    if (!ModelState.IsValid)
+    {
+        ViewBag.CategoryList = await _context.GetCategoriesAsync();
+        return View(student);
+    }
+
+    await _context.InsertStudentAsync(student);
+    return RedirectToAction(nameof(Index));
+}
+
+
+---
+
+6️⃣ Update Create.cshtml
+
+<form asp-action="Create" method="post">
+
+    <div asp-validation-summary="All" style="color:red"></div>
+
+    <div>
+        <label>Serial No</label>
+        <input asp-for="SerialNo" />
+        <span asp-validation-for="SerialNo" style="color:red"></span>
+    </div>
+
+    <div>
+        <label>Name</label>
+        <input asp-for="Name" />
+        <span asp-validation-for="Name" style="color:red"></span>
+    </div>
+
+    <div>
+        <label>Age</label>
+        <input asp-for="Age" />
+    </div>
+
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryId">
+            <option value="">-- Select Category --</option>
+            @foreach (var item in ViewBag.CategoryList)
+            {
+                <option value="@item.Id">@item.CategoryName</option>
+            }
+        </select>
+        <span asp-validation-for="CategoryId" style="color:red"></span>
+    </div>
+
+    <button type="submit">Save</button>
+</form>
+
+
+---
+
+7️⃣ (RECOMMENDED) Enforce uniqueness at DB level
+
+This prevents race conditions 👇
+
+CREATE UNIQUE INDEX UX_Students_SerialNo
+ON Students (SerialNo);
+
+
+---
+
+✅ FINAL RESULT
+
+✔ SerialNo added to DB
+✔ Validated before insert
+✔ User-friendly error message
+✔ DB-level safety
+
+
+---
+
+🚀 Optional Enhancements
+
+If you want, I can:
+
+Add AJAX real-time validation
+
+Validate SerialNo on Edit (exclude current ID)
+
+Use ViewModel instead of Entity
+
+Return SP result instead of count
+
+
+Just tell me 👍
+
+**
+
 
 Add a SerialNo column to the Student table. Then, in Create.cshtml, add validation to check if it already exists.
 
