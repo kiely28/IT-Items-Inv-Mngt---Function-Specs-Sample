@@ -1,3 +1,218 @@
+This is a very good question — and based on everything you’ve shown so far, the issue is not EF Core, not async, and not the stored procedure JOIN.
+
+👉 The problem is almost certainly one missing value during EDIT.
+
+Let’s walk through it clearly and precisely.
+
+
+---
+
+🔴 Symptom
+
+> ✔ Create works
+❌ Edit opens correctly
+❌ Click Save / Update
+❌ No error, but data does not change
+
+
+
+
+---
+
+✅ Root Cause (MOST COMMON)
+
+❌ CategoryId is NOT being posted back during Edit
+
+When you added:
+
+public int CategoryId { get; set; }
+public string CategoryName { get; set; }
+
+You display CategoryName, but the dropdown must post CategoryId.
+
+If CategoryId is:
+
+missing
+
+always 0
+
+not bound
+
+
+➡️ Your stored procedure updates with CategoryId = 0 ➡️ Update may affect 0 rows ➡️ Appears like “not saving”
+
+
+---
+
+🔍 How to Confirm (Quick Check)
+
+Put this breakpoint or log in Edit (POST):
+
+[HttpPost]
+public async Task<IActionResult> Edit(Student student)
+{
+    // DEBUG HERE
+    // student.Id
+    // student.Name
+    // student.Age
+    // student.CategoryId  <-- CHECK THIS
+
+    await _context.UpdateStudentAsync(student);
+    return RedirectToAction(nameof(Index));
+}
+
+If CategoryId == 0 → this is the bug ✅
+
+
+---
+
+✅ FIX #1 (MOST IMPORTANT): Edit View MUST bind CategoryId
+
+📁 Views/Students/Edit.cshtml
+
+@model WebApplication1.Models.Student
+@{
+    var categories = ViewBag.CategoryList as List<WebApplication1.Models.Category>;
+}
+
+<form asp-action="Edit" method="post">
+
+    <!-- REQUIRED -->
+    <input type="hidden" asp-for="Id" />
+
+    <div>
+        <label>Name</label>
+        <input asp-for="Name" />
+    </div>
+
+    <div>
+        <label>Age</label>
+        <input asp-for="Age" />
+    </div>
+
+    <!-- 🔴 THIS IS THE KEY PART -->
+    <div>
+        <label>Category</label>
+        <select asp-for="CategoryId">
+            <option value="">-- Select Category --</option>
+            @foreach (var item in categories)
+            {
+                <option value="@item.Id"
+                        selected="@(item.Id == Model.CategoryId)">
+                    @item.CategoryName
+                </option>
+            }
+        </select>
+    </div>
+
+    <button type="submit">Update</button>
+</form>
+
+✔ asp-for="CategoryId"
+✔ Selected value preserved
+✔ Correct FK sent to controller
+
+
+---
+
+✅ FIX #2: Hidden Id MUST Exist
+
+If you forget this:
+
+<input type="hidden" asp-for="Id" />
+
+Then:
+
+student.Id = 0
+
+WHERE Id = 0
+
+❌ No update happens
+
+
+⚠️ This is another very common cause
+
+
+---
+
+✅ FIX #3: Stored Procedure Must Use Id in WHERE
+
+Verify your SP:
+
+ALTER PROCEDURE sp_Students_Update
+    @Id INT,
+    @Name NVARCHAR(100),
+    @Age INT,
+    @CategoryId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE Students
+    SET Name = @Name,
+        Age = @Age,
+        CategoryId = @CategoryId
+    WHERE Id = @Id;   -- 🔴 REQUIRED
+END
+GO
+
+
+---
+
+🔍 Why CREATE Works but EDIT Doesn’t
+
+Action	Reason
+
+Create	No Id required
+Edit	Requires Id + CategoryId
+Missing Id	Update affects 0 rows
+Missing CategoryId	Invalid FK
+
+
+
+---
+
+🧠 Why JOIN Is NOT the Problem
+
+This is important:
+
+❌ LEFT JOIN does NOT affect update
+❌ CategoryName is display-only
+✅ CategoryId is what gets saved
+
+
+---
+
+✅ Final Checklist (Use This)
+
+✔ Edit view has <input type="hidden" asp-for="Id" />
+✔ Dropdown uses asp-for="CategoryId"
+✔ Stored procedure updates by Id
+✔ Controller receives non-zero CategoryId
+
+If any one is missing → edit won’t save.
+
+
+---
+
+🚀 Want Me to Verify?
+
+If you want, paste:
+
+Edit.cshtml
+
+sp_Students_Update
+
+Student.cs
+
+
+I’ll pinpoint the exact line causing it in one reply 👍
+
+
+
+**
+
+
 Perfect 👍
 Let’s join CategoryName into sp_Students_GetAll the correct, clean, and EF-safe way.
 
