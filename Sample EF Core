@@ -1,3 +1,9 @@
+
+Add a SerialNo column to the Student table. Then, in Create.cshtml, add validation to check if it already exists.
+
+
+**
+
 Perfect — this symptom tells us exactly what’s happening 👍
 If clicking Update just reloads the Edit page, then:
 
