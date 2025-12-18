@@ -1,3 +1,160 @@
+This is a classic ASP.NET Core MVC behavior — nothing is “wrong”, but ModelState is overriding your values.
+
+Once you understand this, everything will work exactly as you want 👍
+
+
+---
+
+🔴 ROOT CAUSE (WHY NOTHING CLEARS)
+
+❌ MVC uses ModelState FIRST, not your model
+
+Even if you do:
+
+student.SerialNo = "";
+
+MVC will repopulate the field from ModelState, which still contains the old value.
+
+So:
+
+Save → SerialNo stays
+
+Clear button → SerialNo stays
+
+
+
+---
+
+✅ THE FIX (MANDATORY)
+
+You must clear ModelState before returning the view.
+
+
+---
+
+✅ FIX #1 — Clear SerialNo AFTER Save (Server-side)
+
+✔ Update your Create (POST) action
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(Student student)
+{
+    if (await _context.SerialNoExistsAsync(student.SerialNo))
+    {
+        ModelState.AddModelError("SerialNo", "Serial Number already exists.");
+    }
+
+    if (!ModelState.IsValid)
+    {
+        ViewBag.CategoryList = await _context.GetCategoriesAsync();
+        return View(student);
+    }
+
+    // Save
+    await _context.InsertStudentAsync(student);
+
+    // 🔴 CLEAR MODELSTATE (IMPORTANT)
+    ModelState.Clear();
+
+    // Clear only SerialNo
+    student.SerialNo = string.Empty;
+
+    ViewBag.SuccessMessage = "Student saved successfully.";
+    ViewBag.CategoryList = await _context.GetCategoriesAsync();
+
+    return View(student);
+}
+
+✅ RESULT
+
+✔ SerialNo clears
+✔ Other fields stay
+✔ Success message shows
+
+
+---
+
+✅ FIX #2 — Make Clear Button Work (Client-side)
+
+Your reset button does work, but MVC validation repopulates fields after POST.
+
+✔ Correct Clear button (no submit)
+
+<button type="reset">Clear</button>
+
+⚠️ DO NOT use:
+
+<button>Clear</button>   ❌ (defaults to submit)
+
+
+---
+
+✅ FIX #3 — Force clear SerialNo with JavaScript (optional)
+
+If you want to guarantee clearing, add:
+
+<button type="button" onclick="clearSerial()">Clear</button>
+
+<script>
+    function clearSerial() {
+        document.getElementById("SerialNo").value = "";
+    }
+</script>
+
+
+---
+
+🔍 WHY THIS HAPPENS (IMPORTANT CONCEPT)
+
+Priority	Source
+
+1️⃣	ModelState
+2️⃣	Model values
+3️⃣	HTML defaults
+
+
+So unless you clear ModelState:
+
+ModelState.Clear();
+
+Your changes will be ignored.
+
+
+---
+
+✅ FINAL CHECKLIST
+
+✔ ModelState.Clear() after save
+✔ Clear button is type="reset" or type="button"
+✔ SerialNo input has correct id
+
+
+---
+
+🏆 BEST PRACTICE (Production)
+
+Use PRG pattern with TempData:
+
+TempData["Success"] = true;
+return RedirectToAction("Create");
+
+Then clear SerialNo in GET.
+
+If you want, I can refactor this cleanly using:
+
+ViewModels
+
+PRG pattern
+
+AJAX save
+
+
+Just tell me 👍
+
+**
+
+
 Great requirement 👍 — this is a very common business flow (keep data, only reset Serial No).
 
 You want:
