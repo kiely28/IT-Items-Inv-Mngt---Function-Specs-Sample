@@ -1,3 +1,11 @@
+
+
+Just like the Category field, please add a new field named Location that will be populated from the table tbl_Location, which contains the columns LocationId and LocationName.
+
+**
+
+
+
 Great, thanks for pasting the full Create.cshtml — that makes this precise 👍
 You already have 90% correct code. We just need to:
 
