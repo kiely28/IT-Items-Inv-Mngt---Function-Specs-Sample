@@ -1,4 +1,279 @@
 
+Got it 👍
+You want Location to behave exactly like Category:
+
+Dropdown
+
+Data comes from tbl_Location (LocationId, LocationName)
+
+Selected value is saved with the Student
+
+Used in Create & Edit
+
+
+Below is a complete, consistent, copy-paste–ready implementation that matches your current pattern.
+
+
+---
+
+1️⃣ Database Changes
+
+🔹 tbl_Location
+
+(Assuming this already exists)
+
+CREATE TABLE tbl_Location (
+    LocationId INT IDENTITY PRIMARY KEY,
+    LocationName NVARCHAR(100) NOT NULL
+);
+
+
+---
+
+🔹 Add LocationId to Students table
+
+ALTER TABLE Students
+ADD LocationId INT NOT NULL;
+
+(Optional FK – recommended)
+
+ALTER TABLE Students
+ADD CONSTRAINT FK_Students_Location
+FOREIGN KEY (LocationId) REFERENCES tbl_Location(LocationId);
+
+
+---
+
+2️⃣ Update Student.cs Model
+
+using System.ComponentModel.DataAnnotations;
+
+namespace WebApplication1.Models
+{
+    public class Student
+    {
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "Serial No is required")]
+        public string SerialNo { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Name is required")]
+        public string Name { get; set; } = string.Empty;
+
+        public int Age { get; set; }
+
+        [Required(ErrorMessage = "Category is required")]
+        public int CategoryId { get; set; }
+
+        [Required(ErrorMessage = "Location is required")]
+        public int LocationId { get; set; }
+
+        // Display only
+        public string? CategoryName { get; set; }
+        public string? LocationName { get; set; }
+    }
+}
+
+
+---
+
+3️⃣ Create Location Model
+
+namespace WebApplication1.Models
+{
+    public class Location
+    {
+        public int LocationId { get; set; }
+        public string LocationName { get; set; } = string.Empty;
+    }
+}
+
+
+---
+
+4️⃣ Stored Procedure – Get Locations
+
+CREATE PROCEDURE sp_Location_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT LocationId, LocationName
+    FROM tbl_Location
+    ORDER BY LocationName;
+END
+
+
+---
+
+5️⃣ ApplicationDbContext – Get Locations Async
+
+public DbSet<Location> Locations { get; set; }
+
+public async Task<List<Location>> GetLocationsAsync()
+{
+    return await Locations
+        .FromSqlRaw("EXEC sp_Location_GetAll")
+        .ToListAsync();
+}
+
+
+---
+
+6️⃣ Update Student INSERT / UPDATE Stored Procedures
+
+🔹 Insert
+
+ALTER PROCEDURE sp_Students_Insert
+    @SerialNo NVARCHAR(50),
+    @Name NVARCHAR(100),
+    @Age INT,
+    @CategoryId INT,
+    @LocationId INT
+AS
+BEGIN
+    INSERT INTO Students
+    (SerialNo, Name, Age, CategoryId, LocationId)
+    VALUES
+    (@SerialNo, @Name, @Age, @CategoryId, @LocationId);
+END
+
+🔹 Update
+
+ALTER PROCEDURE sp_Students_Update
+    @Id INT,
+    @SerialNo NVARCHAR(50),
+    @Name NVARCHAR(100),
+    @Age INT,
+    @CategoryId INT,
+    @LocationId INT
+AS
+BEGIN
+    UPDATE Students
+    SET SerialNo = @SerialNo,
+        Name = @Name,
+        Age = @Age,
+        CategoryId = @CategoryId,
+        LocationId = @LocationId
+    WHERE Id = @Id;
+END
+
+
+---
+
+7️⃣ Update StudentsController
+
+🔹 Create (GET)
+
+public async Task<IActionResult> Create()
+{
+    ViewBag.CategoryList = await _context.GetCategoriesAsync();
+    ViewBag.LocationList = await _context.GetLocationsAsync();
+    return View();
+}
+
+🔹 Create (POST)
+
+[HttpPost]
+[ValidateAntiForgeryToken]
+public async Task<IActionResult> Create(Student student)
+{
+    if (await _context.SerialNoExistsAsync(student.SerialNo))
+    {
+        ModelState.AddModelError("SerialNo", "Serial Number already exists.");
+    }
+
+    if (!ModelState.IsValid)
+    {
+        ViewBag.CategoryList = await _context.GetCategoriesAsync();
+        ViewBag.LocationList = await _context.GetLocationsAsync();
+        return View(student);
+    }
+
+    await _context.InsertStudentAsync(student);
+
+    ModelState.Clear();
+    student.SerialNo = string.Empty;
+
+    ViewBag.SuccessMessage = "Saved successfully.";
+    ViewBag.CategoryList = await _context.GetCategoriesAsync();
+    ViewBag.LocationList = await _context.GetLocationsAsync();
+
+    return View(student);
+}
+
+(Same logic applies to Edit GET/POST)
+
+
+---
+
+8️⃣ Update Create.cshtml – Add Location Dropdown
+
+Add this just like Category:
+
+<div class="row mb-6">
+    <label class="col-sm-2 col-form-label" for="basic-default-location">Location</label>
+    <div class="col-sm-10">
+        <select asp-for="LocationId" class="form-control" id="basic-default-location">
+            <option value="">Select Location</option>
+            @foreach (var item in ViewBag.LocationList as List<WebApplication1.Models.Location>)
+            {
+                <option value="@item.LocationId">@item.LocationName</option>
+            }
+        </select>
+        <span asp-validation-for="LocationId" style="color:red"></span>
+    </div>
+</div>
+
+
+---
+
+9️⃣ Update Enter-Key Navigation Order
+
+Add Location before Serial No:
+
+const fields = [
+    "basic-default-name",
+    "basic-default-sno1",
+    "basic-default-category",
+    "basic-default-location",
+    "basic-default-sno" // LAST FIELD
+];
+
+
+---
+
+✅ FINAL RESULT
+
+✔ Location dropdown populated from DB
+✔ Required validation
+✔ Saved with Student
+✔ Works in Create & Edit
+✔ Enter-key navigation works
+✔ Clear button works
+✔ Focus logic unaffected
+
+
+---
+
+🚀 OPTIONAL NEXT STEPS
+
+If you want, I can:
+
+Join LocationName in sp_Students_GetAll
+
+Add Location filter in Index
+
+Convert ViewBag → ViewModel
+
+Add “Other Location” textbox logic
+
+
+Just tell me 👍
+
+**
+
+
 
 Just like the Category field, please add a new field named Location that will be populated from the table tbl_Location, which contains the columns LocationId and LocationName.
 
