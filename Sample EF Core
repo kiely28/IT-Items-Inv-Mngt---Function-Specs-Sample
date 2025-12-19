@@ -1,4 +1,159 @@
 
+Perfect — this is the correct next step 👍
+We’ll update sp_Students_GetAll to JOIN tbl_Location and return LocationName, just like Category.
+
+Below is the clean, correct, production-ready version.
+
+
+---
+
+✅ Updated sp_Students_GetAll (with Category + Location)
+
+ALTER PROCEDURE sp_Students_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        s.Id,
+        s.SerialNo,
+        s.Name,
+        s.Age,
+        s.CategoryId,
+        c.CategoryName,
+        s.LocationId,
+        l.LocationName
+    FROM Students s
+    INNER JOIN tbl_category c
+        ON s.CategoryId = c.CategoryId
+    INNER JOIN tbl_Location l
+        ON s.LocationId = l.LocationId
+    ORDER BY s.Id DESC;
+END
+
+
+---
+
+✅ Make Sure Your Student Model Matches
+
+You already have this — just confirming ✅
+
+public class Student
+{
+    public int Id { get; set; }
+    public string SerialNo { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int Age { get; set; }
+
+    public int CategoryId { get; set; }
+    public string? CategoryName { get; set; }
+
+    public int LocationId { get; set; }
+    public string? LocationName { get; set; }
+}
+
+⚠ Important
+
+CategoryName and LocationName must NOT have [Required]
+
+They are read-only display fields
+
+
+
+---
+
+✅ EF Core Call (No Change Needed)
+
+If you already have this:
+
+public async Task<List<Student>> GetStudentsAsync()
+{
+    return await Students
+        .FromSqlRaw("EXEC sp_Students_GetAll")
+        .ToListAsync();
+}
+
+👉 No changes needed — EF Core will automatically map:
+
+CategoryName
+
+LocationName
+
+
+
+---
+
+✅ Index.cshtml Example Display
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Serial No</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Location</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.SerialNo</td>
+            <td>@item.Name</td>
+            <td>@item.CategoryName</td>
+            <td>@item.LocationName</td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+
+---
+
+✅ Common Issues Checklist (If It Doesn’t Show)
+
+✔ Column names must match property names exactly
+✔ LocationName exists in SELECT
+✔ No [Required] on display-only fields
+✔ Stored procedure updated using ALTER
+✔ Application restarted (important!)
+
+
+---
+
+🎯 Result
+
+✔ CategoryName shows
+✔ LocationName shows
+✔ No validation errors
+✔ Edit/Create still work
+✔ EF Core mapping is clean
+
+
+---
+
+If you want next:
+
+Edit page auto-select Location
+
+Index filtering by Location
+
+Search by Serial No + Location
+
+Switch ViewBag → Strong ViewModel
+
+
+Just say the word 👍
+
+
+**
+
+
+
 Got it 👍
 You want Location to behave exactly like Category:
 
