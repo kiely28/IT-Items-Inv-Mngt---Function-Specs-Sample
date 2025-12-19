@@ -1,3 +1,133 @@
+Perfect 👍
+We’ll modify your existing Enter-key navigation so that:
+
+✅ Enter moves to the next field
+✅ ONLY when Enter is pressed on the last field, the form submits
+
+No conflicts with validation, Clear button, or Save behavior.
+
+
+---
+
+🎯 FINAL BEHAVIOR
+
+Field	Press Enter
+
+Serial No	Focus → Name
+Name	Focus → Age
+Age	Focus → Category
+Category (last field)	✅ Submit form
+
+
+
+---
+
+✅ COMPLETE, DROP-IN JAVASCRIPT (USE THIS)
+
+Put this at the bottom of Create.cshtml:
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const fields = [
+            "SerialNo",
+            "Name",
+            "Age",
+            "CategoryId" // LAST FIELD
+        ];
+
+        fields.forEach((fieldId, index) => {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+
+            field.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+
+                    // LAST FIELD → SUBMIT FORM
+                    if (index === fields.length - 1) {
+                        // allow normal submit
+                        return;
+                    }
+
+                    // OTHER FIELDS → MOVE FOCUS
+                    e.preventDefault(); // stop submit
+                    const nextFieldId = fields[index + 1];
+                    document.getElementById(nextFieldId)?.focus();
+                }
+            });
+        });
+    });
+</script>
+
+
+---
+
+✅ REQUIREMENTS CHECKLIST (MAKE SURE THESE EXIST)
+
+Inputs must have IDs (you already do ✔)
+
+<input asp-for="SerialNo" id="SerialNo" />
+<input asp-for="Name" id="Name" />
+<input asp-for="Age" id="Age" />
+
+<select asp-for="CategoryId" id="CategoryId"></select>
+
+Save button must be:
+
+<button type="submit">Save</button>
+
+
+---
+
+🧠 WHY THIS WORKS
+
+e.preventDefault() blocks submit except on last field
+
+Last field allows default browser submit
+
+MVC validation still runs
+
+No duplicate submissions
+
+
+
+---
+
+🏆 OPTIONAL UX IMPROVEMENT
+
+Auto-focus Serial No on page load:
+
+<script>
+    window.onload = () => document.getElementById("SerialNo")?.focus();
+</script>
+
+
+---
+
+✅ FINAL RESULT
+
+✔ Enter behaves like Tab
+✔ Last Enter submits
+✔ Validation works
+✔ Clear button unaffected
+✔ No accidental submits
+
+
+---
+
+If you want next:
+
+Skip Enter on dropdown until selected
+
+Enter submits only if form is valid
+
+Keyboard shortcuts (Ctrl+S to Save)
+
+
+Just tell me 👍
+
+**
+
 Got it 👍
 You want Enter key = move to next field (like Tab) instead of submitting the form.
 
