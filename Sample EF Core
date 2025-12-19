@@ -1,3 +1,130 @@
+Got it 👍
+You want Enter key = move to next field (like Tab) instead of submitting the form.
+
+Below is a clean, complete, and safe solution that works with your current Create page.
+
+
+---
+
+🎯 BEHAVIOR YOU WILL GET
+
+Action	Result
+
+Press Enter in Serial No	Focus → Name
+Press Enter in Name	Focus → Age
+Press Enter in Age	Focus → Category
+Press Enter in Category	Focus → Save button
+Form submit	Only when clicking Save
+
+
+
+---
+
+✅ STEP 1 — Make sure your inputs have IDs
+
+You already have these (good), just confirming:
+
+<input asp-for="SerialNo" id="SerialNo" />
+<input asp-for="Name" id="Name" />
+<input asp-for="Age" id="Age" />
+
+<select asp-for="CategoryId" id="CategoryId">
+
+
+---
+
+✅ STEP 2 — Add this JavaScript at the BOTTOM of Create.cshtml
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const fields = [
+            "SerialNo",
+            "Name",
+            "Age",
+            "CategoryId"
+        ];
+
+        fields.forEach((fieldId, index) => {
+            const field = document.getElementById(fieldId);
+
+            if (!field) return;
+
+            field.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+                    e.preventDefault(); // stop form submit
+
+                    const nextFieldId = fields[index + 1];
+                    if (nextFieldId) {
+                        document.getElementById(nextFieldId)?.focus();
+                    } else {
+                        // last field → focus Save button
+                        document.querySelector("button[type='submit']")?.focus();
+                    }
+                }
+            });
+        });
+    });
+</script>
+
+
+---
+
+✅ OPTIONAL (BETTER UX)
+
+Auto-select text when focused
+
+<script>
+    document.querySelectorAll("input").forEach(input => {
+        input.addEventListener("focus", () => input.select());
+    });
+</script>
+
+
+---
+
+⚠️ IMPORTANT NOTES
+
+Enter will not submit the form anymore
+
+Validation still works
+
+Mouse users are unaffected
+
+Clear button behavior stays the same
+
+
+
+---
+
+🏆 BEST PRACTICE TIP
+
+For large forms:
+
+You can reuse this script
+
+Just update the fields array order
+
+
+
+---
+
+If you want next:
+
+Enter key submits only on last field
+
+Skip disabled fields
+
+Use arrow keys for navigation
+
+Apply this globally to all forms
+
+
+Just tell me 👍
+
+
+**
+
 Sure 👍
 Below is a complete and clean validation setup for all fields, including Serial No, that works with:
 
