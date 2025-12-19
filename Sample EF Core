@@ -1,3 +1,167 @@
+
+
+
+
+
+
+@*
+    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
+*@
+@{
+}
+
+
+@model WebApplication1.Models.Student
+
+@{
+    var categories = ViewBag.CategoryList as List<WebApplication1.Models.Category>;
+}
+<h2>Add</h2>
+
+
+@if (ViewBag.SuccessMessage != null)
+{
+    <div style="color:green;">
+        @ViewBag.SuccessMessage
+    </div>
+}
+
+
+<div class="card-body">
+    <form asp-action="Create" method="post" id="studentForm">
+
+        @* <div asp-validation-summary="All" style="color:red"></div> *@
+
+        <div class="row mb-6">
+            <label class="col-sm-2 col-form-label" for="basic-default-name">Model</label>
+            <div class="col-sm-10">
+                <input asp-for="Name" class="form-control" id="basic-default-name" />
+                <span asp-validation-for="Name" style="color:red"></span>
+            </div>
+        </div>
+
+        <div class="row mb-6">
+            <label class="col-sm-2 col-form-label" for="basic-default-sno1">Serial1</label>
+            <div class="col-sm-10">
+                <div class="col-sm-10">
+                    <input asp-for="Age" class="form-control" id="basic-default-sno1" />
+                </div>
+                <div class="form-text"> You can use letters, numbers & periods </div>
+                <span asp-validation-for="CategoryId" style="color:red"></span>
+            </div>
+        </div>
+
+        <div class="row mb-6">
+            <label class="col-sm-2 col-form-label" for="basic-default-category">Category</label>
+            <div class="col-sm-10">
+                <select asp-for="CategoryId" class="form-control" id="basic-default-category">
+                    <option value="">Select Category</option>
+                    @foreach (var item in categories)
+                    {
+                        <option value="@item.CategoryId">
+                            @item.CategoryName
+                        </option>
+                    }
+                </select>
+                <span asp-validation-for="CategoryId" style="color:red"></span>
+            </div>
+        </div>
+
+        <div class="row mb-6">
+            <label class="col-sm-2 col-form-label" for="basic-default-sno">Serial No</label>
+            <div class="col-sm-10">
+                <input asp-for="SerialNo" class="form-control" id="basic-default-sno" />
+                <span asp-validation-for="SerialNo" style="color:red"></span>
+            </div>
+        </div>
+
+        <div class="row justify-content-end">
+            <div class="col-sm-10">
+                <button type="submit" class="btn btn-primary">
+                    <span class="tf-icons bx bx-save bx-18px me-2"></span>Save
+                </button>
+                <button type="button" id="btnClear" class="btn btn-secondary">
+                    <span class="tf-icons bx bx-eraser bx-18px me-2"></span>Clear
+                </button>
+                
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    // ALWAYS clear fields manually
+    document.getElementById("btnClear").addEventListener("click", function () {
+        document.getElementById("basic-default-sno").value = "";
+        document.getElementById("basic-default-name").value = "";
+        document.getElementById("basic-default-sno1").value = "";
+        document.getElementById("basic-default-category").selectedIndex = 0;
+
+        document.getElementById("basic-default-name").focus();
+    });
+
+    // After SAVE → focus SerialNo
+    window.onload = function () {
+        var success = '@ViewBag.SuccessMessage';
+        if (success) {
+            document.getElementById("basic-default-sno").focus();
+        }
+    };
+</script>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
+@* Auto-focus on the next field when Enter is pressed *@
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const fields = [
+            "basic-default-name",
+            "basic-default-sno1",
+            "basic-default-category",
+            "basic-default-sno" // LAST FIELD
+        ];
+
+        fields.forEach((fieldId, index) => {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+
+            field.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") {
+
+                    // LAST FIELD → SUBMIT FORM
+                    if (index === fields.length - 1) {
+                        // allow normal submit
+                        return;
+                    }
+
+                    // OTHER FIELDS → MOVE FOCUS
+                    e.preventDefault(); // stop submit
+                    const nextFieldId = fields[index + 1];
+                    document.getElementById(nextFieldId)?.focus();
+                }
+            });
+        });
+    });
+</script>
+
+@* Auto-select text when focused *@
+<script>
+    document.querySelectorAll("input").forEach(input => {
+        input.addEventListener("focus", () => input.select());
+    });
+</script>
+
+@* Auto-focus on page load: *@
+<script>
+    window.onload = () => document.getElementById("basic-default-name")?.focus();
+</script>
+
+**
+
+
 Perfect 👍
 We’ll modify your existing Enter-key navigation so that:
 
