@@ -1,7 +1,188 @@
+Great, thanks for pasting the full Create.cshtml — that makes this precise 👍
+You already have 90% correct code. We just need to:
+
+1. Detect the Serial No validation error text
+
+
+2. Focus Serial No when that error exists
+
+
+3. Focus Serial No after successful Save
+
+
+4. Avoid conflicting window.onload handlers (you currently have two, which is a bug)
 
 
 
 
+---
+
+🔴 IMPORTANT ISSUE IN YOUR CURRENT CODE
+
+You have TWO window.onload blocks:
+
+window.onload = function () { ... }   // for success
+window.onload = () => ...             // auto-focus name
+
+➡️ The second one overrides the first, so focus logic breaks.
+
+We will merge everything into ONE DOMContentLoaded handler.
+
+
+---
+
+✅ WHAT WE WILL IMPLEMENT
+
+✔ Rules
+
+If Serial No error = "Serial Number already exists." → focus Serial No
+
+Else if Save successful → focus Serial No
+
+Else (first load) → focus Name
+
+
+
+---
+
+✅ STEP 1 — NO controller changes needed
+
+You already have:
+
+ModelState.AddModelError("SerialNo", "Serial Number already exists.");
+
+Perfect 👍
+
+
+---
+
+✅ STEP 2 — REPLACE ALL your focus-related <script> blocks with THIS ONE
+
+👉 DELETE these from your page:
+
+All window.onload scripts
+
+The last auto-focus script
+
+Keep your Clear + Enter-key scripts (we’ll slightly adjust Clear focus)
+
+
+
+---
+
+✅ FINAL, CLEAN, WORKING SCRIPT (COPY-PASTE)
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const serialInput = document.getElementById("basic-default-sno");
+        const nameInput = document.getElementById("basic-default-name");
+
+        // 🔍 Detect Serial No validation error
+        const serialErrorSpan = document.querySelector(
+            "span[data-valmsg-for='SerialNo']"
+        );
+
+        const serialErrorText = serialErrorSpan?.innerText.trim();
+
+        const successMessage = "@ViewBag.SuccessMessage";
+
+        // RULE 1: Duplicate Serial No → focus Serial No
+        if (serialErrorText === "Serial Number already exists.") {
+            serialInput?.focus();
+            serialInput?.select();
+            return;
+        }
+
+        // RULE 2: After successful Save → focus Serial No
+        if (successMessage) {
+            serialInput?.focus();
+            serialInput?.select();
+            return;
+        }
+
+        // RULE 3: First load → focus Name
+        nameInput?.focus();
+        nameInput?.select();
+    });
+
+    // CLEAR BUTTON
+    document.getElementById("btnClear").addEventListener("click", function () {
+        document.getElementById("basic-default-sno").value = "";
+        document.getElementById("basic-default-name").value = "";
+        document.getElementById("basic-default-sno1").value = "";
+        document.getElementById("basic-default-category").selectedIndex = 0;
+
+        document.getElementById("basic-default-name").focus();
+    });
+</script>
+
+
+---
+
+✅ WHAT THIS FIXES
+
+Scenario	Focus
+
+Serial No already exists	✅ Serial No
+Save success	✅ Serial No
+First page load	✅ Name
+Clear button	✅ Name
+Enter key navigation	✅ unchanged
+
+
+
+---
+
+🧠 WHY THIS WORKS
+
+MVC renders validation messages server-side
+
+We read the actual rendered text
+
+Focus logic runs once, in the correct priority order
+
+No window.onload conflicts
+
+
+
+---
+
+⚠️ OPTIONAL IMPROVEMENT (MORE ROBUST)
+
+If you ever change the error text, instead of matching text you can do:
+
+if (serialErrorSpan && serialErrorSpan.innerText.trim() !== "") {
+
+This catches any SerialNo error, not just duplicates.
+
+
+---
+
+✅ FINAL RESULT (EXACTLY WHAT YOU ASKED)
+
+✔ Duplicate Serial No → cursor jumps to Serial No
+✔ Save success → cursor jumps to Serial No
+✔ Clear works
+✔ Enter-key flow works
+✔ No race conditions
+
+
+---
+
+If you want next:
+
+Highlight Serial No field in red on duplicate
+
+Shake animation on error
+
+AJAX duplicate check (no postback)
+
+
+Just tell me 👍
+
+
+**
 
 
 @*
