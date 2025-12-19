@@ -1,4 +1,12 @@
 
+add a ControlNo in table Students, that format like this "NT-AT-1225-002" NT-AT is from selected Category from tbl_Category column CategoryCode, 1225 is MMYY and 001 is series of number to be inserted per category
+
+
+
+**
+
+
+
 Perfect — this is the correct next step 👍
 We’ll update sp_Students_GetAll to JOIN tbl_Location and return LocationName, just like Category.
 
