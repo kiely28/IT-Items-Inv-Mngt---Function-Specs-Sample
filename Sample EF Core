@@ -1,3 +1,241 @@
+Great requirement — this is a clean UI + data-rule scenario 👍
+We’ll do this properly with:
+
+✔ DB change
+✔ Model update
+✔ Create.cshtml UI logic
+✔ JavaScript behavior based on Category.Uom
+
+
+---
+
+✅ STEP 1: Add Quantity column to Students table
+
+ALTER TABLE Students
+ADD Quantity INT NOT NULL DEFAULT 1;
+
+
+---
+
+✅ STEP 2: Ensure tbl_Category has Uom
+
+tbl_Category
+------------
+CategoryId
+CategoryName
+CategoryCode
+Uom          -- e.g. 'pc', 'kg', 'box'
+
+
+---
+
+✅ STEP 3: Update Student model
+
+public class Student
+{
+    public int Id { get; set; }
+
+    public string ControlNo { get; set; } = string.Empty;
+    public string SerialNo { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+    public int Age { get; set; }
+
+    public int CategoryId { get; set; }
+    public string? CategoryName { get; set; }
+
+    public int LocationId { get; set; }
+    public string? LocationName { get; set; }
+
+    public int Quantity { get; set; } = 1;   // ✅ NEW
+}
+
+
+---
+
+✅ STEP 4: Update INSERT Stored Procedure
+
+sp_Students_Insert
+
+ALTER PROCEDURE sp_Students_Insert
+    @Name NVARCHAR(100),
+    @Age INT,
+    @CategoryId INT,
+    @LocationId INT,
+    @SerialNo NVARCHAR(50),
+    @Quantity INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE 
+        @CategoryCode NVARCHAR(20),
+        @MMYY CHAR(4),
+        @NextSeries INT,
+        @ControlNo NVARCHAR(30);
+
+    SELECT @CategoryCode = CategoryCode
+    FROM tbl_Category
+    WHERE CategoryId = @CategoryId;
+
+    SET @MMYY = FORMAT(GETDATE(), 'MMyy');
+
+    SELECT @NextSeries = ISNULL(MAX(
+        CAST(RIGHT(ControlNo, 3) AS INT)
+    ), 0) + 1
+    FROM Students
+    WHERE CategoryId = @CategoryId
+      AND SUBSTRING(ControlNo, LEN(@CategoryCode) + 2, 4) = @MMYY;
+
+    SET @ControlNo =
+        @CategoryCode + '-' + @MMYY + '-' +
+        RIGHT('000' + CAST(@NextSeries AS VARCHAR(3)), 3);
+
+    INSERT INTO Students
+    (
+        ControlNo,
+        Name,
+        Age,
+        CategoryId,
+        LocationId,
+        SerialNo,
+        Quantity
+    )
+    VALUES
+    (
+        @ControlNo,
+        @Name,
+        @Age,
+        @CategoryId,
+        @LocationId,
+        @SerialNo,
+        @Quantity
+    );
+END
+
+
+---
+
+✅ STEP 5: Update Create.cshtml UI
+
+🔹 Quantity field
+
+<div class="row mb-6">
+    <label class="col-sm-2 col-form-label">Quantity</label>
+    <div class="col-sm-10">
+        <input asp-for="Quantity"
+               class="form-control"
+               id="quantity"
+               min="1" />
+        <span asp-validation-for="Quantity" class="text-danger"></span>
+    </div>
+</div>
+
+
+---
+
+✅ STEP 6: Pass Category UOM to the dropdown
+
+Modify Category dropdown:
+
+<select asp-for="CategoryId"
+        class="form-control"
+        id="basic-default-category">
+    <option value="">Select Category</option>
+    @foreach (var item in categories)
+    {
+        <option value="@item.CategoryId"
+                data-uom="@item.Uom">
+            @item.CategoryName
+        </option>
+    }
+</select>
+
+
+---
+
+✅ STEP 7: JavaScript Logic (CORE REQUIREMENT)
+
+👉 If Uom == 'pc' → Quantity = 1 + disabled
+👉 Else → Quantity enabled
+
+<script>
+    document.getElementById("basic-default-category")
+        .addEventListener("change", function () {
+
+            const selected = this.options[this.selectedIndex];
+            const uom = selected.getAttribute("data-uom");
+            const qtyInput = document.getElementById("quantity");
+
+            if (!uom) {
+                qtyInput.value = "";
+                qtyInput.disabled = false;
+                return;
+            }
+
+            if (uom.toLowerCase() === "pc") {
+                qtyInput.value = 1;
+                qtyInput.disabled = true;
+            } else {
+                qtyInput.disabled = false;
+                if (qtyInput.value === "1") {
+                    qtyInput.value = "";
+                }
+            }
+        });
+</script>
+
+
+---
+
+✅ STEP 8: Ensure Quantity is sent even if disabled
+
+⚠ Disabled inputs are not posted by HTML forms.
+
+✔ FIX: Add hidden field
+
+<input type="hidden" asp-for="Quantity" id="hiddenQuantity" />
+
+Sync it:
+
+<script>
+    document.getElementById("studentForm").addEventListener("submit", function () {
+        document.getElementById("hiddenQuantity").value =
+            document.getElementById("quantity").value;
+    });
+</script>
+
+
+---
+
+🏆 FINAL BEHAVIOR
+
+✔ Category UOM = pc → Quantity auto = 1, locked
+✔ Other UOM → Quantity editable
+✔ Correctly saved to DB
+✔ No validation conflict
+✔ Clean UX
+
+
+---
+
+Want next?
+
+Auto-focus Quantity only if enabled
+
+Validation based on UOM
+
+Show UOM label beside Quantity
+
+Edit page behavior same as Create
+
+
+Just tell me 👍
+
+
+**
+
+
 Add a Quantity column to the Students table. The tbl_Category table contains a Uom column. If the selected Category in Create.cshtml has Uom equal to ‘pc’, then the Quantity field in Create.cshtml should be set to 1 and disabled; otherwise, allow manual input for the Quantity field.
 
 **
