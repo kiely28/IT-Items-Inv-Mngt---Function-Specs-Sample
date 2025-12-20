@@ -1,3 +1,156 @@
+This issue is 100% caused by parameter order / mapping mismatch, not SQL Server itself 👍
+Let’s go straight to the exact things you must check and how to fix them.
+
+
+---
+
+🚨 SYMPTOM
+
+Age column contains LocationId
+
+LocationId column contains Age
+
+
+That means values are being passed in the wrong order when executing the stored procedure.
+
+
+---
+
+✅ CHECK THESE 3 PLACES (IN THIS ORDER)
+
+
+---
+
+✅ 1️⃣ Stored Procedure PARAMETER ORDER (SQL)
+
+Your stored procedure parameter order MUST match the values passed.
+
+✔ Correct example
+
+ALTER PROCEDURE sp_Students_Insert
+    @Name NVARCHAR(100),
+    @Age INT,
+    @CategoryId INT,
+    @LocationId INT,
+    @SerialNo NVARCHAR(50)
+AS
+BEGIN
+    INSERT INTO Students
+    (
+        Name,
+        Age,
+        CategoryId,
+        LocationId,
+        SerialNo
+    )
+    VALUES
+    (
+        @Name,
+        @Age,
+        @CategoryId,
+        @LocationId,
+        @SerialNo
+    );
+END
+
+⚠ If Age and LocationId are swapped here, SQL will accept it silently.
+
+
+---
+
+✅ 2️⃣ ApplicationDbContext EXEC CALL (MOST COMMON CAUSE)
+
+❌ WRONG (POSITIONAL VALUES – DANGEROUS)
+
+await Database.ExecuteSqlRawAsync(
+    "EXEC sp_Students_Insert @Name, @Age, @CategoryId, @LocationId, @SerialNo",
+    new SqlParameter("@Name", student.Name),
+    new SqlParameter("@Age", student.LocationId),   // ❌ swapped
+    new SqlParameter("@CategoryId", student.CategoryId),
+    new SqlParameter("@LocationId", student.Age),   // ❌ swapped
+    new SqlParameter("@SerialNo", student.SerialNo)
+);
+
+
+---
+
+✅ CORRECT (SAFE & ORDER-INDEPENDENT)
+
+await Database.ExecuteSqlRawAsync(
+    @"EXEC sp_Students_Insert 
+        @Name = @Name,
+        @Age = @Age,
+        @CategoryId = @CategoryId,
+        @LocationId = @LocationId,
+        @SerialNo = @SerialNo",
+    new SqlParameter("@Name", student.Name),
+    new SqlParameter("@Age", student.Age),
+    new SqlParameter("@CategoryId", student.CategoryId),
+    new SqlParameter("@LocationId", student.LocationId),
+    new SqlParameter("@SerialNo", student.SerialNo)
+);
+
+✅ ALWAYS use named parameters like this
+
+
+---
+
+✅ 3️⃣ Model ↔ View Binding (LESS LIKELY)
+
+Make sure inputs are correct in Create.cshtml:
+
+<input asp-for="Age" />
+<select asp-for="LocationId"></select>
+
+❌ This would cause swapping:
+
+<input asp-for="LocationId" />   <!-- WRONG -->
+<select asp-for="Age"></select> <!-- WRONG -->
+
+
+---
+
+🧪 QUICK TEST TO CONFIRM
+
+Run this manually in SQL:
+
+EXEC sp_Students_Insert
+    @Name = 'TEST',
+    @Age = 99,
+    @CategoryId = 1,
+    @LocationId = 3,
+    @SerialNo = 'SN-TEST';
+
+Then:
+
+SELECT Age, LocationId FROM Students ORDER BY Id DESC;
+
+If correct in SQL but wrong from app → C# EXEC mapping is the problem.
+
+
+---
+
+🏆 FINAL VERDICT (99% PROBABILITY)
+
+✅ Your EXEC call is passing parameters in the wrong order
+
+✅ Fix:
+
+Use named parameters in ExecuteSqlRawAsync
+Never rely on position.
+
+
+---
+
+If you want, paste your:
+
+InsertStudentAsync() method
+and I’ll point out the exact swapped line in seconds.
+
+
+**
+
+
 Great requirement — this is a very common real-world numbering rule 👍
 Let’s implement it cleanly and safely using SQL Server + Stored Procedures, so your ASP.NET Core app stays simple.
 
