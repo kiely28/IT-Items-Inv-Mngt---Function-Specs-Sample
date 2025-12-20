@@ -1,3 +1,8 @@
+'Category' does not contain a definition for 'Uom' and no accessible extension method 'Uom' accepting a first argument of type 'Category' could be found (are you missing a using directive or an assembly reference?)
+
+
+**
+
 Great requirement — this is a clean UI + data-rule scenario 👍
 We’ll do this properly with:
 
