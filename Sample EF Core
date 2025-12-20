@@ -1,3 +1,9 @@
+Add a Quantity column to the Students table. The tbl_Category table contains a Uom column. If the selected Category in Create.cshtml has Uom equal to ‘pc’, then the Quantity field in Create.cshtml should be set to 1 and disabled; otherwise, allow manual input for the Quantity field.
+
+**
+
+
+
 This issue is 100% caused by parameter order / mapping mismatch, not SQL Server itself 👍
 Let’s go straight to the exact things you must check and how to fix them.
 
