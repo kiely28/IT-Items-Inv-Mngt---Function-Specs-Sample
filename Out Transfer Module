@@ -1,0 +1,327 @@
+Below is a clear, practical, step-by-step guide showing exactly how to plug the OUT / Transfer transaction into your EXISTING IN module, without breaking your current structure or coding style.
+
+This assumes:
+
+You already have an IN Transaction module
+
+You are using ASP.NET Core MVC (.NET 8)
+
+EF Core with Stored Procedures only
+
+Existing tables: tbl_students, tbl_category, tbl_location
+
+
+
+---
+
+✅ STEP-BY-STEP: ADD OUT / TRANSFER INTO EXISTING IN MODULE
+
+
+---
+
+🔹 STEP 1: CONFIRM YOUR EXISTING IN MODULE STRUCTURE
+
+Your IN module already has:
+
+tbl_students (main stock table)
+
+ControlNo generated during IN
+
+Category → UOM → Quantity rules
+
+Location assigned during IN
+
+
+✔ OUT will reuse the same ControlNo
+✔ NO ControlNo generation in OUT
+
+
+---
+
+🔹 STEP 2: ADD TRANSFER HISTORY TABLE (SAFE – NO IMPACT TO IN)
+
+CREATE TABLE tbl_transfer (
+    TransferId INT IDENTITY PRIMARY KEY,
+    StudentId INT NOT NULL,
+    ControlNo NVARCHAR(50) NOT NULL,
+    FromLocationId INT NOT NULL,
+    ToLocationId INT NOT NULL,
+    TransferDate DATETIME DEFAULT GETDATE(),
+    TransactedBy NVARCHAR(100)
+);
+
+➡ This does NOT affect existing IN logic
+
+
+---
+
+🔹 STEP 3: ADD STORED PROCEDURES (OUT ONLY)
+
+3.1 Get Item by Control No
+
+(Used by OUT page – does NOT touch IN)
+
+CREATE PROCEDURE sp_GetStudentByControlNo
+    @ControlNo NVARCHAR(50)
+AS
+BEGIN
+    SELECT 
+        StudentId,
+        ControlNo,
+        Quantity,
+        Uom,
+        LocationId
+    FROM tbl_students
+    WHERE ControlNo = @ControlNo
+      AND IsActive = 1;
+END
+
+
+---
+
+3.2 Transfer OUT Procedure
+
+(ALL logic here, IN module untouched)
+
+CREATE PROCEDURE sp_TransferOut
+    @ControlNo NVARCHAR(50),
+    @NewLocationId INT,
+    @TransactedBy NVARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @StudentId INT, @OldLocationId INT;
+
+    SELECT 
+        @StudentId = StudentId,
+        @OldLocationId = LocationId
+    FROM tbl_students
+    WHERE ControlNo = @ControlNo
+      AND IsActive = 1;
+
+    IF @StudentId IS NULL
+        RAISERROR('Control No not found.',16,1);
+
+    IF @OldLocationId = @NewLocationId
+        RAISERROR('New location must be different.',16,1);
+
+    INSERT INTO tbl_transfer
+    (
+        StudentId,
+        ControlNo,
+        FromLocationId,
+        ToLocationId,
+        TransactedBy
+    )
+    VALUES
+    (
+        @StudentId,
+        @ControlNo,
+        @OldLocationId,
+        @NewLocationId,
+        @TransactedBy
+    );
+
+    UPDATE tbl_students
+    SET LocationId = @NewLocationId
+    WHERE StudentId = @StudentId;
+END
+
+
+---
+
+🔹 STEP 4: ADD MODELS (DO NOT TOUCH IN MODELS)
+
+4.1 Transfer POCO
+
+public class Transfer
+{
+    public int TransferId { get; set; }
+    public int StudentId { get; set; }
+    public string ControlNo { get; set; }
+    public int FromLocationId { get; set; }
+    public int ToLocationId { get; set; }
+    public DateTime TransferDate { get; set; }
+}
+
+
+---
+
+4.2 Transfer ViewModel
+
+public class TransferViewModel
+{
+    public string ControlNo { get; set; }
+    public int NewLocationId { get; set; }
+}
+
+✔ Separate ViewModel = no risk to IN
+
+
+---
+
+🔹 STEP 5: EXTEND ApplicationDbContext (SAFE ADDITION)
+
+> ⚠ Do NOT modify existing IN methods
+Only ADD these methods
+
+
+
+public async Task TransferOutAsync(
+    string controlNo,
+    int newLocationId,
+    string transactedBy)
+{
+    await Database.ExecuteSqlRawAsync(
+        "EXEC sp_TransferOut @ControlNo, @NewLocationId, @TransactedBy",
+        new SqlParameter("@ControlNo", controlNo),
+        new SqlParameter("@NewLocationId", newLocationId),
+        new SqlParameter("@TransactedBy", transactedBy)
+    );
+}
+
+✔ IN module remains untouched
+
+
+---
+
+🔹 STEP 6: ADD NEW CONTROLLER (DO NOT MERGE WITH IN)
+
+public class OutTransactionController : Controller
+{
+    private readonly ApplicationDbContext _context;
+
+    public OutTransactionController(ApplicationDbContext context)
+    {
+        _context = context;
+    }
+
+    public IActionResult Create()
+    {
+        ViewBag.Locations = GetLocations();
+        return View();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create(TransferViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            ViewBag.Locations = GetLocations();
+            return View(model);
+        }
+
+        try
+        {
+            await _context.TransferOutAsync(
+                model.ControlNo,
+                model.NewLocationId,
+                User.Identity?.Name ?? "System"
+            );
+
+            TempData["Success"] = "Transfer successful.";
+            ModelState.Clear();
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError("", ex.Message);
+        }
+
+        ViewBag.Locations = GetLocations();
+        return View();
+    }
+
+    private List<SelectListItem> GetLocations()
+    {
+        return new List<SelectListItem>
+        {
+            new("Warehouse A","1"),
+            new("Warehouse B","2")
+        };
+    }
+}
+
+✔ Keeps IN and OUT fully isolated
+
+
+---
+
+🔹 STEP 7: ADD VIEW (NEW FOLDER – NO OVERWRITE)
+
+📁 Views/OutTransaction/Create.cshtml
+
+(Use the same scanner-friendly UI style as IN)
+
+
+---
+
+🔹 STEP 8: ADD MENU / NAVIGATION
+
+Add OUT beside IN:
+
+<li class="nav-item">
+    <a class="nav-link" asp-controller="OutTransaction" asp-action="Create">
+        OUT / Transfer
+    </a>
+</li>
+
+
+---
+
+🔹 STEP 9: TESTING ORDER (IMPORTANT)
+
+1️⃣ IN transaction → create ControlNo
+2️⃣ Verify record in tbl_students
+3️⃣ Open OUT page
+4️⃣ Scan ControlNo
+5️⃣ Scan New Location
+6️⃣ Confirm:
+
+tbl_transfer has record
+
+tbl_students.LocationId updated
+
+
+
+---
+
+🔹 STEP 10: WHY THIS DOES NOT BREAK YOUR IN MODULE
+
+✔ No table changes to IN logic
+✔ No SP changes to IN logic
+✔ Separate controller
+✔ Separate ViewModel
+✔ Shared table update is intentional
+
+
+---
+
+✅ FINAL ARCHITECTURE
+
+IN MODULE
+ └─ sp_InTransaction
+ └─ tbl_students (insert)
+
+OUT MODULE
+ ├─ sp_TransferOut
+ ├─ tbl_transfer (history)
+ └─ tbl_students (update location)
+
+
+---
+
+🚀 NEXT OPTIONAL UPGRADES
+
+Auto-load current location via AJAX
+
+Quantity-based OUT (partial transfer)
+
+Transfer History page
+
+Barcode debounce handling
+
+Role-based authorization (OUT only)
+
+
+If you want, tell me how your IN module is currently named (controller / SP names), and I will align the OUT module 1-to-1 with it.
